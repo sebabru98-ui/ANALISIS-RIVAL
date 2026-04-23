@@ -6,7 +6,7 @@ const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals
 
 // ─── Supabase (base de datos compartida) ─────────────────────────────────────
 const SUPABASE_URL = "https://utmhpacgzfegtulxrouq.supabase.co";
-const SUPABASE_KEY = "sb_publishable_tH-XjC8HiKI_oRrrmHnn8Q_aiofDdzo";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bWhwYWNnemZlZ3R1bHhyb3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjczMzksImV4cCI6MjA5MjU0MzMzOX0.TrAuORDJO27ZxbpL5BGAzItO0yaf-Fxtvq6ApJ1oyPk";
 
 const KEYS = { rivals:"culp:rivals", standings:"culp:standings", scorers:"culp:scorers", seeded:"culp:seeded" };
 
