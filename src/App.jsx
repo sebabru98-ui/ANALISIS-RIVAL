@@ -23,17 +23,21 @@ async function load(key) {
 
 async function save(key, val) {
   try {
-    await fetch(SUPABASE_URL + "/rest/v1/culp_data", {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data", {
       method: "POST",
       headers: {
         "apikey": SUPABASE_KEY,
         "Authorization": "Bearer " + SUPABASE_KEY,
         "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates"
+        "Prefer": "resolution=merge-duplicates,return=minimal"
       },
       body: JSON.stringify({ key, value: JSON.stringify(val) })
     });
-  } catch(e) { console.error(e); }
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Supabase save error:", res.status, err);
+    }
+  } catch(e) { console.error("Save exception:", e); }
 }
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
