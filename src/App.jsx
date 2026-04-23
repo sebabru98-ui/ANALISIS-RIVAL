@@ -4,10 +4,37 @@ import React from "react";
 // ─── Datos iniciales goleadoras (pre-cargadas desde xlsx) ──────────────────
 const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals":5,"pc":0},{"name":"Cairo, Sofia","team":"M. MORENO","goals":4,"pc":0},{"name":"Castiglione Corvalan, Guadalupe","team":"C.A.S.I.","goals":4,"pc":0},{"name":"Gluch, Carolina","team":"MACABI","goals":4,"pc":0},{"name":"Ravetta, Lara","team":"M. GRANDE","goals":4,"pc":0},{"name":"Seoane, Tiziana","team":"PUERTO NIZUC","goals":4,"pc":0},{"name":"Curri, Manuela","team":"M. MORENO","goals":3,"pc":0},{"name":"Dimarco, Mia","team":"PUERTO NIZUC","goals":3,"pc":0},{"name":"Fernandez, Sol","team":"M. MORENO","goals":3,"pc":0},{"name":"Galleano, Valentina","team":"PUCARA","goals":3,"pc":0},{"name":"Pastorelli, Martina Sol","team":"M. MORENO","goals":3,"pc":0},{"name":"Rodriguez, Macarena","team":"PUERTO NIZUC","goals":3,"pc":0},{"name":"Basini, Renata","team":"C.A.S.I.","goals":2,"pc":0},{"name":"Bravo, Lucila Malena","team":"B. HIPOTECARIO","goals":2,"pc":0},{"name":"Cuitiño Christin, Melisa","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Febles Tripori, Luna Rocio","team":"LANUS","goals":2,"pc":0},{"name":"Fernandez, Juana","team":"HINDU CLUB","goals":2,"pc":0},{"name":"Gamarra, Milagros","team":"PUCARA","goals":2,"pc":0},{"name":"Gluch, Julieta","team":"MACABI","goals":2,"pc":0},{"name":"Gomez, Rocio Jazmin","team":"LANUS","goals":2,"pc":0},{"name":"Landolfi, Agustina","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Moore Castelli, Camila","team":"U. LA PLATA","goals":2,"pc":0},{"name":"Semcheff, Sofia Agustina","team":"CIUDAD","goals":2,"pc":0},{"name":"Sosa, Milagros","team":"BANFIELD","goals":2,"pc":0},{"name":"Villarmea, Julieta","team":"B. HIPOTECARIO","goals":2,"pc":0},{"name":"Vullo, Lucía","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Arouxet, Juana","team":"C.I.S.S.A.B.","goals":2,"pc":0},{"name":"Olivetto, Clara","team":"M. MORENO","goals":2,"pc":0},{"name":"Holmgren, Trinidad","team":"C.A.S.I.","goals":2,"pc":0},{"name":"Jara, Milagros","team":"PUERTO NIZUC","goals":2,"pc":0},{"name":"Abate, Agustina Manon","team":"LANUS","goals":1,"pc":0},{"name":"Almaso, Candela","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Alvarez, Morena","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Berger, Victoria","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Burman, Julieta","team":"M. MORENO","goals":1,"pc":0},{"name":"Canzobre, Martina","team":"PUCARA","goals":1,"pc":0},{"name":"Capalbo, Mercedes","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Dominguez Velazco, Justina","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Durante, Pilar","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Etcheverry, Ines","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Fernandez, Bernardita","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Franco, Adriana Raquel","team":"M. MORENO","goals":1,"pc":0},{"name":"Galleano, Candela","team":"PUCARA","goals":1,"pc":0},{"name":"Gomez Lagrenade, Violeta","team":"PUCARA","goals":1,"pc":0},{"name":"Gutierrez, Agustina Aylen","team":"B. HIPOTECARIO","goals":1,"pc":0},{"name":"Hileman, J Belen","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Kaufman, Nicole","team":"MACABI","goals":1,"pc":0},{"name":"Lopez, Delfina","team":"B. HIPOTECARIO","goals":1,"pc":0},{"name":"Lucini, Martina","team":"CIUDAD","goals":1,"pc":0},{"name":"Luis, Lourdes Rocio","team":"M. GRANDE","goals":1,"pc":0},{"name":"Mattiazzi, Juana","team":"M. MORENO","goals":1,"pc":0},{"name":"Muñoz, Candela","team":"PUCARA","goals":1,"pc":0},{"name":"Murgo, Anabella","team":"CIUDAD","goals":1,"pc":0},{"name":"Pazo, Mariana","team":"PUCARA","goals":1,"pc":0},{"name":"Sapir, Sofía","team":"MACABI","goals":1,"pc":0},{"name":"Tandeitnic, Luana","team":"MACABI","goals":1,"pc":0},{"name":"Testone, Valentina","team":"LANUS","goals":1,"pc":0},{"name":"Torreiro, Maria Pilar","team":"LANUS","goals":1,"pc":0},{"name":"Camporotondo, Delfina","team":"PUERTO NIZUC","goals":1,"pc":0},{"name":"Fernandez Rubio, Agostina","team":"BANFIELD","goals":1,"pc":0},{"name":"Garcia Larralde, Julieta","team":"M. GRANDE","goals":1,"pc":0},{"name":"Grane, Juana","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Ruiz, Valentina","team":"LANUS","goals":1,"pc":0},{"name":"Uranga Imaz, Juana","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Witlis, Morena","team":"MACABI","goals":1,"pc":0}];
 
-// ─── Storage (localStorage) ───────────────────────────────────────────────────
+// ─── Supabase (base de datos compartida) ─────────────────────────────────────
+const SUPABASE_URL = "https://utmhpacgzfegtulxrouq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tH-XjC8HiKI_oRrrmHnn8Q_aiofDdzo";
+
 const KEYS = { rivals:"culp:rivals", standings:"culp:standings", scorers:"culp:scorers", seeded:"culp:seeded" };
-async function load(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
-async function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { console.error(e); } }
+
+async function load(key) {
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data?key=eq." + encodeURIComponent(key) + "&select=value", {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) return JSON.parse(data[0].value);
+    return null;
+  } catch { return null; }
+}
+
+async function save(key, val) {
+  try {
+    await fetch(SUPABASE_URL + "/rest/v1/culp_data", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({ key, value: JSON.stringify(val) })
+    });
+  } catch(e) { console.error(e); }
+}
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
 async function scanPlanilla(base64, mediaType) {
