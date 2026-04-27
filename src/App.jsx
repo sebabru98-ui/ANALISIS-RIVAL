@@ -5,7 +5,253 @@ const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals
 // ─── Supabase (base de datos compartida) ─────────────────────────────────────
 const SUPABASE_URL = "https://utmhpacgzfegtulxrouq.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bWhwYWNnemZlZ3R1bHhyb3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjczMzksImV4cCI6MjA5MjU0MzMzOX0.TrAuORDJO27ZxbpL5BGAzItO0yaf-Fxtvq6ApJ1oyPk";
-const KEYS = { rivals:"culp:rivals", standings:"culp:standings", scorers:"culp:scorers", seeded:"culp:seeded", fixture:"culp:fixture", cards:"culp:cards" };
+const KEYS = { rivals:"culp:rivals", standings:"culp:standings", scorers:"culp:scorers", seeded:"culp:seeded", fixture:"culp:fixture", cards:"culp:cards", fixtureSeeded:"culp:fixtureSeeded" };
+// ─── Fixture pre-cargado (Torneo 2026) ────────────────────────────────────
+const INITIAL_FIXTURE_RAW = [
+["Fecha 1",true,[
+["sáb 07 mar 16:00","PUERTO NIZUC",3,1,"MACABI"],
+["sáb 07 mar 16:00","PUCARA",1,0,"B. HIPOTECARIO"],
+["sáb 07 mar 16:00","C.A.S.I.",1,1,"M. GRANDE"],
+["sáb 07 mar 16:00","LANUS",1,1,"HINDU CLUB"],
+["sáb 07 mar 16:00","CIUDAD B",1,2,"M. MORENO"],
+["sáb 07 mar 16:00","U. LA PLATA",3,0,"C.I.S.S.A.B."],
+["sáb 07 mar 16:00","BANCO CIUDAD",3,0,"BANFIELD"]]],
+["Fecha 2",true,[
+["sáb 14 mar 16:00","BANCO CIUDAD",3,0,"PUERTO NIZUC"],
+["sáb 14 mar 16:00","BANFIELD",2,3,"U. LA PLATA"],
+["sáb 14 mar 16:00","C.I.S.S.A.B.",1,1,"CIUDAD B"],
+["sáb 14 mar 16:00","M. MORENO",2,1,"LANUS"],
+["sáb 14 mar 10:30","HINDU CLUB",0,3,"C.A.S.I."],
+["sáb 14 mar 10:30","M. GRANDE",0,2,"PUCARA"],
+["sáb 14 mar 16:00","B. HIPOTECARIO",1,1,"MACABI"]]],
+["Fecha 3",true,[
+["sáb 21 mar 16:00","PUERTO NIZUC",2,1,"B. HIPOTECARIO"],
+["sáb 21 mar 16:00","MACABI",3,1,"M. GRANDE"],
+["sáb 21 mar 16:00","PUCARA",1,0,"HINDU CLUB"],
+["sáb 21 mar 16:00","C.A.S.I.",2,3,"M. MORENO"],
+["sáb 21 mar 16:00","LANUS",3,1,"C.I.S.S.A.B."],
+["sáb 21 mar 16:00","CIUDAD B",0,1,"BANFIELD"],
+["sáb 21 mar 16:00","U. LA PLATA",2,0,"BANCO CIUDAD"]]],
+["Fecha 4",true,[
+["sáb 28 mar 10:30","U. LA PLATA",2,1,"PUERTO NIZUC"],
+["sáb 28 mar 10:30","BANCO CIUDAD",0,1,"CIUDAD B"],
+["sáb 28 mar 10:30","BANFIELD",0,1,"LANUS"],
+["sáb 28 mar 16:00","C.I.S.S.A.B.",0,1,"C.A.S.I."],
+["sáb 28 mar 16:00","M. MORENO",7,2,"PUCARA"],
+["sáb 28 mar 16:00","HINDU CLUB",2,2,"MACABI"],
+["sáb 28 mar 16:00","M. GRANDE",1,2,"B. HIPOTECARIO"]]],
+["Fecha 5",true,[
+["sáb 11 abr 16:00","PUERTO NIZUC",2,2,"M. GRANDE"],
+["sáb 11 abr 16:00","B. HIPOTECARIO",1,0,"HINDU CLUB"],
+["sáb 11 abr 10:30","MACABI",0,1,"M. MORENO"],
+["sáb 11 abr 16:00","PUCARA",2,0,"C.I.S.S.A.B."],
+["sáb 11 abr 16:00","C.A.S.I.",2,0,"BANFIELD"],
+["sáb 11 abr 16:00","LANUS",0,0,"BANCO CIUDAD"],
+["sáb 11 abr 16:00","CIUDAD B",1,0,"U. LA PLATA"]]],
+["Fecha 6",true,[
+["sáb 18 abr 16:00","CIUDAD B",0,5,"PUERTO NIZUC"],
+["sáb 18 abr 16:00","U. LA PLATA",2,2,"LANUS"],
+["sáb 18 abr 10:30","BANCO CIUDAD",0,2,"C.A.S.I."],
+["sáb 18 abr 10:30","BANFIELD",0,2,"PUCARA"],
+["sáb 18 abr 16:00","C.I.S.S.A.B.",0,3,"MACABI"],
+["sáb 18 abr 16:00","M. MORENO",3,1,"B. HIPOTECARIO"],
+["sáb 18 abr 16:00","HINDU CLUB",2,1,"M. GRANDE"]]],
+["Fecha 7",true,[
+["sáb 25 abr 16:00","PUERTO NIZUC",1,0,"HINDU CLUB"],
+["sáb 25 abr 16:00","M. GRANDE",0,0,"M. MORENO"],
+["sáb 25 abr 16:00","B. HIPOTECARIO",2,2,"C.I.S.S.A.B."],
+["sáb 25 abr 16:00","MACABI",1,0,"BANFIELD"],
+["sáb 25 abr 16:00","PUCARA",2,1,"BANCO CIUDAD"],
+["sáb 25 abr 16:00","C.A.S.I.",0,0,"U. LA PLATA"],
+["sáb 25 abr 16:00","LANUS",1,1,"CIUDAD B"]]],
+["Fecha 8",false,[
+["sáb 02 may 16:00","LANUS",0,0,"PUERTO NIZUC"],
+["sáb 02 may 16:00","CIUDAD B",0,0,"C.A.S.I."],
+["sáb 02 may 16:00","U. LA PLATA",0,0,"PUCARA"],
+["sáb 02 may 16:00","BANCO CIUDAD",0,0,"MACABI"],
+["sáb 02 may 16:00","BANFIELD",0,0,"B. HIPOTECARIO"],
+["sáb 02 may 16:00","C.I.S.S.A.B.",0,0,"M. GRANDE"],
+["sáb 02 may 16:00","M. MORENO",0,0,"HINDU CLUB"]]],
+["Fecha 9",false,[
+["sáb 09 may 16:00","PUERTO NIZUC",0,0,"M. MORENO"],
+["sáb 09 may 16:00","HINDU CLUB",0,0,"C.I.S.S.A.B."],
+["sáb 09 may 16:00","M. GRANDE",0,0,"BANFIELD"],
+["sáb 09 may 16:00","B. HIPOTECARIO",0,0,"BANCO CIUDAD"],
+["sáb 09 may 16:00","MACABI",0,0,"U. LA PLATA"],
+["sáb 09 may 16:00","PUCARA",0,0,"CIUDAD B"],
+["sáb 09 may 16:00","C.A.S.I.",0,0,"LANUS"]]],
+["Fecha 10",false,[
+["sáb 16 may 16:00","C.A.S.I.",0,0,"PUERTO NIZUC"],
+["sáb 16 may 16:00","LANUS",0,0,"PUCARA"],
+["sáb 16 may 16:00","CIUDAD B",0,0,"MACABI"],
+["sáb 16 may 16:00","U. LA PLATA",0,0,"B. HIPOTECARIO"],
+["sáb 16 may 16:00","BANCO CIUDAD",0,0,"M. GRANDE"],
+["sáb 16 may 16:00","BANFIELD",0,0,"HINDU CLUB"],
+["sáb 16 may 16:00","C.I.S.S.A.B.",0,0,"M. MORENO"]]],
+["Fecha 11",false,[
+["sáb 30 may 16:00","PUERTO NIZUC",0,0,"C.I.S.S.A.B."],
+["sáb 30 may 16:00","M. MORENO",0,0,"BANFIELD"],
+["sáb 30 may 16:00","HINDU CLUB",0,0,"BANCO CIUDAD"],
+["sáb 30 may 16:00","M. GRANDE",0,0,"U. LA PLATA"],
+["sáb 30 may 16:00","B. HIPOTECARIO",0,0,"CIUDAD B"],
+["sáb 30 may 16:00","MACABI",0,0,"LANUS"],
+["sáb 30 may 16:00","PUCARA",0,0,"C.A.S.I."]]],
+["Fecha 12",false,[
+["sáb 06 jun 16:00","PUCARA",0,0,"PUERTO NIZUC"],
+["sáb 06 jun 16:00","C.A.S.I.",0,0,"MACABI"],
+["sáb 06 jun 16:00","LANUS",0,0,"B. HIPOTECARIO"],
+["sáb 06 jun 16:00","CIUDAD B",0,0,"M. GRANDE"],
+["sáb 06 jun 16:00","U. LA PLATA",0,0,"HINDU CLUB"],
+["sáb 06 jun 16:00","BANCO CIUDAD",0,0,"M. MORENO"],
+["sáb 06 jun 16:00","BANFIELD",0,0,"C.I.S.S.A.B."]]],
+["Fecha 13",false,[
+["sáb 13 jun 16:00","PUERTO NIZUC",0,0,"BANFIELD"],
+["sáb 13 jun 16:00","C.I.S.S.A.B.",0,0,"BANCO CIUDAD"],
+["sáb 13 jun 16:00","M. MORENO",0,0,"U. LA PLATA"],
+["sáb 13 jun 16:00","HINDU CLUB",0,0,"CIUDAD B"],
+["sáb 13 jun 16:00","M. GRANDE",0,0,"LANUS"],
+["sáb 13 jun 16:00","B. HIPOTECARIO",0,0,"C.A.S.I."],
+["sáb 13 jun 16:00","MACABI",0,0,"PUCARA"]]],
+["Fecha 14",false,[
+["sáb 20 jun 16:00","MACABI",0,0,"PUERTO NIZUC"],
+["sáb 20 jun 16:00","B. HIPOTECARIO",0,0,"PUCARA"],
+["sáb 20 jun 16:00","M. GRANDE",0,0,"C.A.S.I."],
+["sáb 20 jun 16:00","HINDU CLUB",0,0,"LANUS"],
+["sáb 20 jun 16:00","M. MORENO",0,0,"CIUDAD B"],
+["sáb 20 jun 16:00","C.I.S.S.A.B.",0,0,"U. LA PLATA"],
+["sáb 20 jun 16:00","BANFIELD",0,0,"BANCO CIUDAD"]]],
+["Fecha 15",false,[
+["sáb 27 jun 16:00","PUERTO NIZUC",0,0,"BANCO CIUDAD"],
+["sáb 27 jun 16:00","U. LA PLATA",0,0,"BANFIELD"],
+["sáb 27 jun 16:00","CIUDAD B",0,0,"C.I.S.S.A.B."],
+["sáb 27 jun 16:00","LANUS",0,0,"M. MORENO"],
+["sáb 27 jun 16:00","C.A.S.I.",0,0,"HINDU CLUB"],
+["sáb 27 jun 16:00","PUCARA",0,0,"M. GRANDE"],
+["sáb 27 jun 16:00","MACABI",0,0,"B. HIPOTECARIO"]]],
+["Fecha 16",false,[
+["sáb 04 jul 16:00","B. HIPOTECARIO",0,0,"PUERTO NIZUC"],
+["sáb 04 jul 16:00","M. GRANDE",0,0,"MACABI"],
+["sáb 04 jul 16:00","HINDU CLUB",0,0,"PUCARA"],
+["sáb 04 jul 16:00","M. MORENO",0,0,"C.A.S.I."],
+["sáb 04 jul 16:00","C.I.S.S.A.B.",0,0,"LANUS"],
+["sáb 04 jul 16:00","BANFIELD",0,0,"CIUDAD B"],
+["sáb 04 jul 16:00","BANCO CIUDAD",0,0,"U. LA PLATA"]]],
+["Fecha 17",false,[
+["sáb 11 jul 16:00","PUERTO NIZUC",0,0,"U. LA PLATA"],
+["sáb 11 jul 16:00","CIUDAD B",0,0,"BANCO CIUDAD"],
+["sáb 11 jul 16:00","LANUS",0,0,"BANFIELD"],
+["sáb 11 jul 16:00","C.A.S.I.",0,0,"C.I.S.S.A.B."],
+["sáb 11 jul 16:00","PUCARA",0,0,"M. MORENO"],
+["sáb 11 jul 16:00","MACABI",0,0,"HINDU CLUB"],
+["sáb 11 jul 16:00","B. HIPOTECARIO",0,0,"M. GRANDE"]]],
+["Fecha 18",false,[
+["sáb 18 jul 16:00","M. GRANDE",0,0,"PUERTO NIZUC"],
+["sáb 18 jul 16:00","HINDU CLUB",0,0,"B. HIPOTECARIO"],
+["sáb 18 jul 16:00","M. MORENO",0,0,"MACABI"],
+["sáb 18 jul 16:00","C.I.S.S.A.B.",0,0,"PUCARA"],
+["sáb 18 jul 16:00","BANFIELD",0,0,"C.A.S.I."],
+["sáb 18 jul 16:00","BANCO CIUDAD",0,0,"LANUS"],
+["sáb 18 jul 16:00","U. LA PLATA",0,0,"CIUDAD B"]]],
+["Fecha 19",false,[
+["sáb 08 ago 16:00","PUERTO NIZUC",0,0,"CIUDAD B"],
+["sáb 08 ago 16:00","LANUS",0,0,"U. LA PLATA"],
+["sáb 08 ago 16:00","C.A.S.I.",0,0,"BANCO CIUDAD"],
+["sáb 08 ago 16:00","PUCARA",0,0,"BANFIELD"],
+["sáb 08 ago 16:00","MACABI",0,0,"C.I.S.S.A.B."],
+["sáb 08 ago 16:00","B. HIPOTECARIO",0,0,"M. MORENO"],
+["sáb 08 ago 16:00","M. GRANDE",0,0,"HINDU CLUB"]]],
+["Fecha 20",false,[
+["sáb 22 ago 16:00","HINDU CLUB",0,0,"PUERTO NIZUC"],
+["sáb 22 ago 16:00","M. MORENO",0,0,"M. GRANDE"],
+["sáb 22 ago 16:00","C.I.S.S.A.B.",0,0,"B. HIPOTECARIO"],
+["sáb 22 ago 16:00","BANFIELD",0,0,"MACABI"],
+["sáb 22 ago 16:00","BANCO CIUDAD",0,0,"PUCARA"],
+["sáb 22 ago 16:00","U. LA PLATA",0,0,"C.A.S.I."],
+["sáb 22 ago 16:00","CIUDAD B",0,0,"LANUS"]]],
+["Fecha 21",false,[
+["sáb 05 sept 16:00","PUERTO NIZUC",0,0,"LANUS"],
+["sáb 05 sept 16:00","C.A.S.I.",0,0,"CIUDAD B"],
+["sáb 05 sept 16:00","PUCARA",0,0,"U. LA PLATA"],
+["sáb 05 sept 16:00","MACABI",0,0,"BANCO CIUDAD"],
+["sáb 05 sept 16:00","B. HIPOTECARIO",0,0,"BANFIELD"],
+["sáb 05 sept 16:00","M. GRANDE",0,0,"C.I.S.S.A.B."],
+["sáb 05 sept 16:00","HINDU CLUB",0,0,"M. MORENO"]]],
+["Fecha 22",false,[
+["sáb 12 sept 16:00","M. MORENO",0,0,"PUERTO NIZUC"],
+["sáb 12 sept 16:00","C.I.S.S.A.B.",0,0,"HINDU CLUB"],
+["sáb 12 sept 16:00","BANFIELD",0,0,"M. GRANDE"],
+["sáb 12 sept 16:00","BANCO CIUDAD",0,0,"B. HIPOTECARIO"],
+["sáb 12 sept 16:00","U. LA PLATA",0,0,"MACABI"],
+["sáb 12 sept 16:00","CIUDAD B",0,0,"PUCARA"],
+["sáb 12 sept 16:00","LANUS",0,0,"C.A.S.I."]]],
+["Fecha 23",false,[
+["sáb 26 sept 16:00","PUERTO NIZUC",0,0,"C.A.S.I."],
+["sáb 26 sept 16:00","PUCARA",0,0,"LANUS"],
+["sáb 26 sept 16:00","MACABI",0,0,"CIUDAD B"],
+["sáb 26 sept 16:00","B. HIPOTECARIO",0,0,"U. LA PLATA"],
+["sáb 26 sept 16:00","M. GRANDE",0,0,"BANCO CIUDAD"],
+["sáb 26 sept 16:00","HINDU CLUB",0,0,"BANFIELD"],
+["sáb 26 sept 16:00","M. MORENO",0,0,"C.I.S.S.A.B."]]],
+["Fecha 24",false,[
+["sáb 03 oct 16:00","C.I.S.S.A.B.",0,0,"PUERTO NIZUC"],
+["sáb 03 oct 16:00","BANFIELD",0,0,"M. MORENO"],
+["sáb 03 oct 16:00","BANCO CIUDAD",0,0,"HINDU CLUB"],
+["sáb 03 oct 16:00","U. LA PLATA",0,0,"M. GRANDE"],
+["sáb 03 oct 16:00","CIUDAD B",0,0,"B. HIPOTECARIO"],
+["sáb 03 oct 16:00","LANUS",0,0,"MACABI"],
+["sáb 03 oct 16:00","C.A.S.I.",0,0,"PUCARA"]]],
+["Fecha 25",false,[
+["sáb 17 oct 16:00","PUERTO NIZUC",0,0,"PUCARA"],
+["sáb 17 oct 16:00","MACABI",0,0,"C.A.S.I."],
+["sáb 17 oct 16:00","B. HIPOTECARIO",0,0,"LANUS"],
+["sáb 17 oct 16:00","M. GRANDE",0,0,"CIUDAD B"],
+["sáb 17 oct 16:00","HINDU CLUB",0,0,"U. LA PLATA"],
+["sáb 17 oct 16:00","M. MORENO",0,0,"BANCO CIUDAD"],
+["sáb 17 oct 16:00","C.I.S.S.A.B.",0,0,"BANFIELD"]]],
+["Fecha 26",false,[
+["sáb 31 oct 16:00","BANFIELD",0,0,"PUERTO NIZUC"],
+["sáb 31 oct 16:00","BANCO CIUDAD",0,0,"C.I.S.S.A.B."],
+["sáb 31 oct 16:00","U. LA PLATA",0,0,"M. MORENO"],
+["sáb 31 oct 16:00","CIUDAD B",0,0,"HINDU CLUB"],
+["sáb 31 oct 16:00","LANUS",0,0,"M. GRANDE"],
+["sáb 31 oct 16:00","C.A.S.I.",0,0,"B. HIPOTECARIO"],
+["sáb 31 oct 16:00","PUCARA",0,0,"MACABI"]]]
+];
+function buildInitialFixture() {
+  let id = 17000000;
+  return INITIAL_FIXTURE_RAW.map(([label, played, matches]) => ({
+    id: ++id, label,
+    date: matches[0]?.[0] || "",
+    matches: matches.map(([date, home, gl, gv, away]) => ({
+      id: ++id, home, away, played,
+      golesLocal: played ? gl : 0, golesVisitante: played ? gv : 0,
+      scorers: [], cards: [],
+      applied: played ? { golesLocal: gl, golesVisitante: gv, scorers: [], cards: [] } : null,
+      date
+    }))
+  }));
+}
+function computeStandingsFromFixture(fixture) {
+  const teams = {};
+  const ensure = name => {
+    if (!teams[name]) teams[name] = { name, pj:0,pg:0,pe:0,pp:0,gf:0,gc:0,pts:0,dif:0, isUs: name === "U. LA PLATA" };
+    return teams[name];
+  };
+  for (const f of fixture) {
+    for (const m of f.matches) {
+      if (!m.played) continue;
+      const h = ensure(m.home), a = ensure(m.away);
+      h.pj++; a.pj++;
+      h.gf += m.golesLocal; h.gc += m.golesVisitante;
+      a.gf += m.golesVisitante; a.gc += m.golesLocal;
+      if (m.golesLocal > m.golesVisitante) { h.pg++; a.pp++; }
+      else if (m.golesLocal < m.golesVisitante) { a.pg++; h.pp++; }
+      else { h.pe++; a.pe++; }
+    }
+  }
+  return Object.values(teams).map(t => ({...t, pts: t.pg*3+t.pe, dif: t.gf-t.gc}))
+    .sort((a,b) => (b.pts-a.pts) || (b.dif-a.dif) || (b.gf-a.gf));
+}
 async function load(key) {
   try {
     const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data?key=eq." + encodeURIComponent(key) + "&select=value", {
@@ -1458,11 +1704,22 @@ export default function App() {
   const [subview,setSubview]=useState(null);
   const [selected,setSelected]=useState(null);
   useEffect(()=>{
-    Promise.all([load(KEYS.rivals),load(KEYS.standings),load(KEYS.scorers),load(KEYS.seeded),load(KEYS.fixture),load(KEYS.cards)]).then(async([r,s,sc,seeded,fx,cd])=>{
+    Promise.all([load(KEYS.rivals),load(KEYS.standings),load(KEYS.scorers),load(KEYS.seeded),load(KEYS.fixture),load(KEYS.cards),load(KEYS.fixtureSeeded)]).then(async([r,s,sc,seeded,fx,cd,fxSeeded])=>{
       if(r) setRivals(r);
-      if(s) setStandings(s);
-      if(fx) setFixture(fx);
       if(cd) setCards(cd);
+      // Si nunca se sembró el fixture O está vacío, cargar fixture inicial completo + standings
+      if(!fxSeeded || !fx || fx.length===0){
+        const initialFx = buildInitialFixture();
+        const initialStandings = computeStandingsFromFixture(initialFx);
+        setFixture(initialFx);
+        setStandings(initialStandings);
+        await save(KEYS.fixture, initialFx);
+        await save(KEYS.standings, initialStandings);
+        await save(KEYS.fixtureSeeded, true);
+      } else {
+        setFixture(fx);
+        if(s) setStandings(s);
+      }
       // Si no hay goleadoras guardadas O nunca se sembró, cargar datos iniciales
       if(!seeded || !sc || sc.length===0) {
         setScorers(INITIAL_SCORERS);
