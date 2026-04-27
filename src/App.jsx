@@ -6,6 +6,11 @@ const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals
 const SUPABASE_URL = "https://utmhpacgzfegtulxrouq.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bWhwYWNnemZlZ3R1bHhyb3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjczMzksImV4cCI6MjA5MjU0MzMzOX0.TrAuORDJO27ZxbpL5BGAzItO0yaf-Fxtvq6ApJ1oyPk";
 const KEYS = { rivals:"culp:rivals", standings:"culp:standings", scorers:"culp:scorers", seeded:"culp:seeded", fixture:"culp:fixture", cards:"culp:cards", fixtureSeeded:"culp:fixtureSeeded" };
+// ─── Auth simple (modo staff/admin) ─────────────────────────────────────────
+const ADMIN_PASSWORD = "culp2026";
+const ADMIN_AUTH_KEY = "culp:adminAuth";
+const AdminContext = React.createContext(false);
+const useIsAdmin = () => React.useContext(AdminContext);
 // ─── Fixture pre-cargado (Torneo 2026) ────────────────────────────────────
 const INITIAL_FIXTURE_RAW = [
 ["Fecha 1",true,[
@@ -600,6 +605,7 @@ function PlanillaScanner({rivalName,onApply,onClose,mode="scan"}) {
 // STANDINGS
 // ═══════════════════════════════════════════════════════════════════════════════
 function StandingsView({standings,setStandings}) {
+  const isAdmin = useIsAdmin();
   const [editing,setEditing]=useState(false);
   const [form,setForm]=useState(null);
   const [editIdx,setEditIdx]=useState(null);
@@ -615,13 +621,13 @@ function StandingsView({standings,setStandings}) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>TABLA DE POSICIONES</h2>
-        <Btn small onClick={()=>{setForm({...empty});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>
+        {isAdmin && <Btn small onClick={()=>{setForm({...empty});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>}
       </div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead><tr style={{background:C.accent,color:C.bg}}>{["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS",""].map(h=><th key={h} style={{padding:"10px 8px",textAlign:h==="EQUIPO"?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
+          <thead><tr style={{background:C.accent,color:C.bg}}>{(isAdmin?["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS",""]:["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS"]).map(h=><th key={h} style={{padding:"10px 8px",textAlign:h==="EQUIPO"?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
           <tbody>
-            {standings.length===0&&<tr><td colSpan={11} style={{textAlign:"center",padding:32,color:C.gray}}>No hay equipos cargados aún</td></tr>}
+            {standings.length===0&&<tr><td colSpan={isAdmin?11:10} style={{textAlign:"center",padding:32,color:C.gray}}>No hay equipos cargados aún</td></tr>}
             {standings.map((t,i)=>(
               <tr key={i} style={{background:t.isUs?C.purple+"22":i%2===0?C.card:C.card2,borderBottom:`1px solid ${C.border}`}}>
                 <td style={{textAlign:"center",padding:"10px 8px",color:C.gray,fontWeight:700}}>{i+1}</td>
@@ -629,12 +635,12 @@ function StandingsView({standings,setStandings}) {
                 {[t.pj,t.pg,t.pe,t.pp,t.gf,t.gc].map((v,j)=><td key={j} style={{textAlign:"center",padding:"10px 8px",color:"#ccc"}}>{v}</td>)}
                 <td style={{textAlign:"center",padding:"10px 8px",color:t.dif>0?C.green:t.dif<0?C.red:"#ccc",fontWeight:700}}>{t.dif>0?"+":""}{t.dif}</td>
                 <td style={{textAlign:"center",padding:"10px 8px",color:C.accent,fontWeight:700,fontSize:15}}>{t.pts}</td>
-                <td style={{textAlign:"center"}}>
+                {isAdmin && <td style={{textAlign:"center"}}>
                   <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                     <button onClick={()=>{setForm({...standings[i]});setEditIdx(i);setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
                     <button onClick={()=>{const s=[...standings];s.splice(i,1);setStandings(s);save(KEYS.standings,s);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}}><Icon name="trash" size={13}/></button>
                   </div>
-                </td>
+                </td>}
               </tr>
             ))}
           </tbody>
@@ -655,6 +661,7 @@ function StandingsView({standings,setStandings}) {
 // SCORERS
 // ═══════════════════════════════════════════════════════════════════════════════
 function ScorersView({scorers,setScorers,rivals}) {
+  const isAdmin = useIsAdmin();
   const [editing,setEditing]=useState(false);
   const [form,setForm]=useState(null);
   const [editIdx,setEditIdx]=useState(null);
@@ -677,7 +684,7 @@ function ScorersView({scorers,setScorers,rivals}) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>TABLA DE GOLEADORAS</h2>
-        <Btn small onClick={()=>{setForm({name:"",team:"",goals:0,pc:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>
+        {isAdmin && <Btn small onClick={()=>{setForm({name:"",team:"",goals:0,pc:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>}
       </div>
       {/* Filtros */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
@@ -695,9 +702,9 @@ function ScorersView({scorers,setScorers,rivals}) {
       </div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead><tr style={{background:C.purple,color:C.white}}>{["#","JUGADORA","CLUB","GOLES","PC",""].map(h=><th key={h} style={{padding:"10px 8px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
+          <thead><tr style={{background:C.purple,color:C.white}}>{(isAdmin?["#","JUGADORA","CLUB","GOLES","PC",""]:["#","JUGADORA","CLUB","GOLES","PC"]).map(h=><th key={h} style={{padding:"10px 8px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
           <tbody>
-            {filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:32,color:C.gray}}>Sin resultados</td></tr>}
+            {filtered.length===0&&<tr><td colSpan={isAdmin?6:5} style={{textAlign:"center",padding:32,color:C.gray}}>Sin resultados</td></tr>}
             {filtered.map((s,i)=>{
               const realRank=scorers.findIndex(x=>x.name===s.name&&x.team===s.team);
               return(
@@ -707,12 +714,12 @@ function ScorersView({scorers,setScorers,rivals}) {
                   <td style={{padding:"10px 8px",color:C.gray}}>{s.team}</td>
                   <td style={{textAlign:"center",padding:"10px 8px",color:C.accent,fontWeight:700,fontSize:16}}>{s.goals}</td>
                   <td style={{textAlign:"center",padding:"10px 8px",color:C.red,fontWeight:600}}>{s.pc||"—"}</td>
-                  <td style={{textAlign:"center"}}>
+                  {isAdmin && <td style={{textAlign:"center"}}>
                     <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                       <button onClick={()=>{setForm({...s});setEditIdx(scorers.findIndex(x=>x.name===s.name&&x.team===s.team));setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
                       <button onClick={()=>{const s2=scorers.filter((_,j)=>j!==realRank);setScorers(s2);save(KEYS.scorers,s2);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}}><Icon name="trash" size={13}/></button>
                     </div>
-                  </td>
+                  </td>}
                 </tr>
               );
             })}
@@ -920,6 +927,7 @@ function MatchEditor({match, onSave, onClose}) {
 }
 
 function FixtureView({fixture, setFixture, standings, setStandings, scorers, setScorers, cards, setCards, rivals, setRivals}) {
+  const isAdmin = useIsAdmin();
   const [showPaste, setShowPaste] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [editing, setEditing] = useState(null);
@@ -1073,17 +1081,17 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>FIXTURE</h2>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {isAdmin && <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <Btn small color={C.purple} onClick={()=>setShowPaste(true)}><Icon name="upload" size={12}/> Pegar fixture</Btn>
           <Btn small outline onClick={addFecha}><Icon name="plus" size={12}/> Nueva fecha</Btn>
-        </div>
+        </div>}
       </div>
       {fixture.length === 0 && (
         <div style={{textAlign:"center",padding:"48px 20px",background:C.card,border:`1px dashed ${C.border}`,borderRadius:12}}>
           <Icon name="calendar" size={40} color={C.border}/>
           <p style={{color:C.gray,margin:"14px 0 4px",fontFamily:FF,letterSpacing:1}}>NO HAY FIXTURE CARGADO</p>
-          <p style={{color:C.gray,fontSize:12,margin:"0 0 14px"}}>Pegá los partidos del torneo o agregá fechas manualmente</p>
-          <Btn color={C.purple} onClick={()=>setShowPaste(true)}><Icon name="upload" size={14}/> Pegar fixture</Btn>
+          <p style={{color:C.gray,fontSize:12,margin:"0 0 14px"}}>{isAdmin ? "Pegá los partidos del torneo o agregá fechas manualmente" : "Iniciá sesión como staff para cargar el fixture"}</p>
+          {isAdmin && <Btn color={C.purple} onClick={()=>setShowPaste(true)}><Icon name="upload" size={14}/> Pegar fixture</Btn>}
         </div>
       )}
       {fixture.map((f, fi) => {
@@ -1099,8 +1107,8 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
                 <Badge text={`${played}/${total}`} color={played===total&&total>0?C.green:C.accent}/>
               </div>
               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <button title="Agregar partido" onClick={e=>{e.stopPropagation(); setShowAdd(showAdd===fi?null:fi); setCollapsed(prev=>({...prev,[f.id]:false}));}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer",padding:4}}><Icon name="plus" size={14}/></button>
-                <button title="Eliminar fecha" onClick={e=>{e.stopPropagation(); removeFecha(fi);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer",padding:4}}><Icon name="trash" size={13}/></button>
+                {isAdmin && <button title="Agregar partido" onClick={e=>{e.stopPropagation(); setShowAdd(showAdd===fi?null:fi); setCollapsed(prev=>({...prev,[f.id]:false}));}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer",padding:4}}><Icon name="plus" size={14}/></button>}
+                {isAdmin && <button title="Eliminar fecha" onClick={e=>{e.stopPropagation(); removeFecha(fi);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer",padding:4}}><Icon name="trash" size={13}/></button>}
                 <span style={{color:C.gray,fontSize:11,transform:isCollapsed?"rotate(-90deg)":"none",transition:"transform 0.15s",display:"inline-block"}}><Icon name="chevron" size={14}/></span>
               </div>
             </div>
@@ -1111,7 +1119,7 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
                   const isUs = m.home === US_TEAM || m.away === US_TEAM;
                   const winner = m.played ? (m.golesLocal > m.golesVisitante ? "home" : m.golesLocal < m.golesVisitante ? "away" : "draw") : null;
                   return (
-                    <div key={m.id} onClick={()=>setEditing({fechaIdx:fi, matchIdx:mi, match:m})} style={{background:isUs?C.accent+"11":C.card2,border:`1px solid ${isUs?C.accent+"44":C.border}`,borderRadius:8,padding:"10px 12px",marginBottom:6,cursor:"pointer"}}>
+                    <div key={m.id} onClick={()=>{ if(isAdmin) setEditing({fechaIdx:fi, matchIdx:mi, match:m}); }} style={{background:isUs?C.accent+"11":C.card2,border:`1px solid ${isUs?C.accent+"44":C.border}`,borderRadius:8,padding:"10px 12px",marginBottom:6,cursor:isAdmin?"pointer":"default"}}>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 80px 1fr",alignItems:"center",gap:8}}>
                         <div style={{textAlign:"right",color:winner==="home"?C.green:C.white,fontWeight:m.home===US_TEAM?700:500,fontSize:13}}>
                           {m.home===US_TEAM&&"🔵 "}{m.home}
@@ -1180,6 +1188,7 @@ MACABI vs PUCARA
 // CARDS VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 function CardsView({cards, setCards}) {
+  const isAdmin = useIsAdmin();
   const [editing,setEditing]=useState(false);
   const [form,setForm]=useState(null);
   const [editIdx,setEditIdx]=useState(null);
@@ -1212,7 +1221,7 @@ function CardsView({cards, setCards}) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>TARJETAS</h2>
-        <Btn small onClick={()=>{setForm({name:"",team:"",verde:0,amarilla:0,roja:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>
+        {isAdmin && <Btn small onClick={()=>{setForm({name:"",team:"",verde:0,amarilla:0,roja:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 110px",gap:8,marginBottom:14}}>
         <input style={inp} placeholder="Buscar jugadora..." value={filter} onChange={e=>setFilter(e.target.value)}/>
@@ -1232,9 +1241,9 @@ function CardsView({cards, setCards}) {
       </div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead><tr style={{background:C.gold,color:C.bg}}>{["#","JUGADORA","CLUB","🟢","🟡","🔴",""].map(h=><th key={h} style={{padding:"10px 8px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
+          <thead><tr style={{background:C.gold,color:C.bg}}>{(isAdmin?["#","JUGADORA","CLUB","🟢","🟡","🔴",""]:["#","JUGADORA","CLUB","🟢","🟡","🔴"]).map(h=><th key={h} style={{padding:"10px 8px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
           <tbody>
-            {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:"center",padding:32,color:C.gray}}>Sin tarjetas registradas</td></tr>}
+            {filtered.length===0&&<tr><td colSpan={isAdmin?7:6} style={{textAlign:"center",padding:32,color:C.gray}}>Sin tarjetas registradas</td></tr>}
             {filtered.map((c,i)=>{
               const realRank=cards.findIndex(x=>x.name===c.name&&x.team===c.team);
               return(
@@ -1245,12 +1254,12 @@ function CardsView({cards, setCards}) {
                   <td style={{textAlign:"center",padding:"10px 8px",color:C.green,fontWeight:700}}>{c.verde||"—"}</td>
                   <td style={{textAlign:"center",padding:"10px 8px",color:C.gold,fontWeight:700}}>{c.amarilla||"—"}</td>
                   <td style={{textAlign:"center",padding:"10px 8px",color:C.red,fontWeight:700}}>{c.roja||"—"}</td>
-                  <td style={{textAlign:"center"}}>
+                  {isAdmin && <td style={{textAlign:"center"}}>
                     <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                       <button onClick={()=>{setForm({...c});setEditIdx(realRank);setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
                       <button onClick={()=>{const c2=cards.filter((_,j)=>j!==realRank);setCards(c2);save(KEYS.cards,c2);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}}><Icon name="trash" size={13}/></button>
                     </div>
-                  </td>
+                  </td>}
                 </tr>
               );
             })}
@@ -1529,6 +1538,7 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
 // RIVAL DETAIL
 // ═══════════════════════════════════════════════════════════════════════════════
 function RivalDetail({rival,onEdit,onBack}) {
+  const isAdmin = useIsAdmin();
   const a=rival.analysis||{};
   const Row=({l,v})=>v?<div style={{display:"flex",gap:8,marginBottom:5}}><span style={{color:C.gray,fontSize:12,minWidth:120}}>{l}:</span><span style={{color:C.white,fontSize:12}}>{v}</span></div>:null;
   const wins=rival.matches?.filter(m=>+m.goalsFor>+m.goalsAgainst).length||0;
@@ -1541,7 +1551,7 @@ function RivalDetail({rival,onEdit,onBack}) {
           <button onClick={onBack} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="back" size={20}/></button>
           <div><h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>{rival.name.toUpperCase()}</h2><span style={{color:C.gray,fontSize:12}}>{rival.date}{rival.round?` · ${rival.round}`:""}</span></div>
         </div>
-        <Btn small onClick={onEdit}><Icon name="edit" size={13}/> Editar</Btn>
+        {isAdmin && <Btn small onClick={onEdit}><Icon name="edit" size={13}/> Editar</Btn>}
       </div>
       {rival.matches?.length>0&&(
         <div style={{display:"flex",gap:8,marginBottom:16}}>
@@ -1584,13 +1594,14 @@ function RivalDetail({rival,onEdit,onBack}) {
 // RIVALS LIST
 // ═══════════════════════════════════════════════════════════════════════════════
 function RivalsView({rivals,onNew,onView,onEdit,onDelete}) {
+  const isAdmin = useIsAdmin();
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>ANÁLISIS DE RIVALES</h2>
-        <Btn onClick={onNew}><Icon name="plus" size={14}/> Nuevo análisis</Btn>
+        {isAdmin && <Btn onClick={onNew}><Icon name="plus" size={14}/> Nuevo análisis</Btn>}
       </div>
-      {rivals.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}><Icon name="shield" size={48} color={C.border}/><p style={{color:C.gray,margin:"12px 0 20px"}}>No hay análisis cargados aún</p><Btn onClick={onNew}><Icon name="plus" size={14}/> Crear primer análisis</Btn></div>}
+      {rivals.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}><Icon name="shield" size={48} color={C.border}/><p style={{color:C.gray,margin:"12px 0 20px"}}>No hay análisis cargados aún</p>{isAdmin && <Btn onClick={onNew}><Icon name="plus" size={14}/> Crear primer análisis</Btn>}</div>}
       <div style={{display:"grid",gap:10}}>
         {rivals.map(r=>{
           const wins=r.matches?.filter(m=>+m.goalsFor>+m.goalsAgainst).length||0;
@@ -1611,8 +1622,8 @@ function RivalsView({rivals,onNew,onView,onEdit,onDelete}) {
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 <Btn small outline onClick={()=>onView(r)}><Icon name="eye" size={12}/></Btn>
-                <Btn small outline onClick={()=>onEdit(r)}><Icon name="edit" size={12}/></Btn>
-                <button onClick={()=>onDelete(r.id)} style={{background:"none",border:"none",color:C.red,cursor:"pointer",padding:6}}><Icon name="trash" size={14}/></button>
+                {isAdmin && <Btn small outline onClick={()=>onEdit(r)}><Icon name="edit" size={12}/></Btn>}
+                {isAdmin && <button onClick={()=>onDelete(r.id)} style={{background:"none",border:"none",color:C.red,cursor:"pointer",padding:6}}><Icon name="trash" size={14}/></button>}
               </div>
             </div>
           );
@@ -1691,6 +1702,43 @@ function Dashboard({rivals,standings,scorers,setView}) {
   );
 }
 // ═══════════════════════════════════════════════════════════════════════════════
+// LOGIN MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+function LoginModal({onClose, onSuccess}) {
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState("");
+  function submit() {
+    if (pwd === ADMIN_PASSWORD) {
+      try { localStorage.setItem(ADMIN_AUTH_KEY, "1"); } catch {}
+      onSuccess();
+    } else {
+      setErr("Contraseña incorrecta");
+      setPwd("");
+    }
+  }
+  return (
+    <Modal title="Modo Staff" onClose={onClose}>
+      <p style={{color:C.gray,fontSize:12,marginBottom:14,lineHeight:1.5}}>
+        Ingresá la contraseña para habilitar la edición de fixture, rivales, tabla, goleadoras y tarjetas.
+      </p>
+      <Input
+        label="Contraseña"
+        type="password"
+        value={pwd}
+        onChange={e=>{setPwd(e.target.value); setErr("");}}
+        onKeyDown={e=>{if(e.key==="Enter") submit();}}
+        autoFocus
+        placeholder="••••••••"
+      />
+      {err && <p style={{color:C.red,fontSize:11,marginTop:-6,marginBottom:10}}>{err}</p>}
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+        <Btn outline onClick={onClose}>Cancelar</Btn>
+        <Btn color={C.green} onClick={submit} disabled={!pwd}><Icon name="check" size={14}/> Ingresar</Btn>
+      </div>
+    </Modal>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function App() {
@@ -1703,6 +1751,17 @@ export default function App() {
   const [view,setView]=useState("home");
   const [subview,setSubview]=useState(null);
   const [selected,setSelected]=useState(null);
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [showLogin,setShowLogin]=useState(false);
+  useEffect(()=>{
+    try { if(localStorage.getItem(ADMIN_AUTH_KEY)==="1") setIsAdmin(true); } catch {}
+  },[]);
+  function logout(){
+    if(!confirm("¿Cerrar sesión de staff?")) return;
+    try { localStorage.removeItem(ADMIN_AUTH_KEY); } catch {}
+    setIsAdmin(false);
+    if(subview==="new"||subview==="edit"){ setSubview(null); setSelected(null); }
+  }
   useEffect(()=>{
     Promise.all([load(KEYS.rivals),load(KEYS.standings),load(KEYS.scorers),load(KEYS.seeded),load(KEYS.fixture),load(KEYS.cards),load(KEYS.fixtureSeeded)]).then(async([r,s,sc,seeded,fx,cd,fxSeeded])=>{
       if(r) setRivals(r);
@@ -1761,7 +1820,7 @@ export default function App() {
     </div>
   );
   return(
-    <>
+    <AdminContext.Provider value={isAdmin}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
       <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Barlow',sans-serif",color:C.white,maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column"}}>
         {/* Header */}
@@ -1770,6 +1829,14 @@ export default function App() {
           <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
           <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
             <Badge text={`${scorers.length} goleadoras`} color={C.purple}/>
+            <button
+              onClick={()=> isAdmin ? logout() : setShowLogin(true)}
+              title={isAdmin ? "Cerrar sesión staff" : "Modo staff"}
+              style={{background:isAdmin?C.green+"22":"none",border:`1px solid ${isAdmin?C.green+"66":C.border}`,borderRadius:8,padding:"5px 8px",cursor:"pointer",color:isAdmin?C.green:C.gray,display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
+            >
+              <Icon name={isAdmin?"check":"shield"} size={12}/>
+              {isAdmin?"STAFF":"VER"}
+            </button>
           </div>
         </div>
         {/* Content */}
@@ -1789,6 +1856,7 @@ export default function App() {
           {nav.map(n=><button key={n.id} style={navBtn(n.id)} onClick={()=>{setView(n.id);setSubview(null);setSelected(null);}}><Icon name={n.icon} size={18}/>{n.label.toUpperCase()}</button>)}
         </div>
       </div>
-    </>
+      {showLogin && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>{setIsAdmin(true);setShowLogin(false);}}/>}
+    </AdminContext.Provider>
   );
 }
