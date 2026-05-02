@@ -365,6 +365,8 @@ const P = {
   camera:"M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   calendar:"M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18",
   chevron:"M6 9l6 6 6-6",
+  share:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13",
+  print:"M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z",
 };
 const Icon = ({name,size=18,color="currentColor"})=>(
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1540,46 +1542,205 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
 function RivalDetail({rival,onEdit,onBack}) {
   const isAdmin = useIsAdmin();
   const a=rival.analysis||{};
-  const Row=({l,v})=>v?<div style={{display:"flex",gap:8,marginBottom:5}}><span style={{color:C.gray,fontSize:12,minWidth:120}}>{l}:</span><span style={{color:C.white,fontSize:12}}>{v}</span></div>:null;
+  const has=(...keys)=>keys.some(k=>a[k]&&String(a[k]).trim());
+  const Row=({l,v})=>v?<div style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-start"}}><span style={{color:C.gray,fontSize:12,minWidth:140,flexShrink:0}}>{l}:</span><span style={{color:C.white,fontSize:13,whiteSpace:"pre-wrap",wordBreak:"break-word",flex:1}}>{v}</span></div>:null;
+  const Para=({l,v,accent=C.accent})=>v?<div style={{marginBottom:12}}><p style={{color:accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 5px"}}>{l.toUpperCase()}</p><p style={{color:C.white,fontSize:13,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.55}}>{v}</p></div>:null;
   const wins=rival.matches?.filter(m=>+m.goalsFor>+m.goalsAgainst).length||0;
   const draws=rival.matches?.filter(m=>+m.goalsFor===+m.goalsAgainst).length||0;
   const losses=rival.matches?.filter(m=>+m.goalsFor<+m.goalsAgainst).length||0;
+
+  const buildShareText=()=>{
+    const L=[];
+    L.push(`📋 ANÁLISIS: ${rival.name.toUpperCase()}`);
+    if(rival.date||rival.round) L.push(`📅 ${rival.date||""}${rival.round?` · ${rival.round}`:""}`);
+    L.push("");
+    if(a.formation) L.push(`Formación: ${a.formation}`);
+    if(a.coach) L.push(`DT: ${a.coach}`);
+    if(a.captain) L.push(`Capitana: ${a.captain}`);
+    if(a.goalkeeper) L.push(`Arquera: ${a.goalkeeper}`);
+    if(a.keyPlayers) L.push(`Jugadoras clave: ${a.keyPlayers}`);
+    if(a.shooters) L.push(`Rematadoras: ${a.shooters}`);
+    if(a.strengths){L.push("");L.push(`💪 FORTALEZAS:`);L.push(a.strengths);}
+    if(a.weaknesses){L.push("");L.push(`⚠️ PARA EXPLOTAR:`);L.push(a.weaknesses);}
+    if(a.planBall||a.planNoBall||a.planPCOff||a.planPCDef){
+      L.push("");L.push("🎯 PLAN DE PARTIDO");
+      if(a.planBall) L.push(`• Con pelota: ${a.planBall}`);
+      if(a.planNoBall) L.push(`• Sin pelota: ${a.planNoBall}`);
+      if(a.planPCOff) L.push(`• PC ofensivos: ${a.planPCOff}`);
+      if(a.planPCDef) L.push(`• PC defensivos: ${a.planPCDef}`);
+    }
+    return L.join("\n");
+  };
+  const handlePrint=()=>window.print();
+  const handleShare=async()=>{
+    const text=buildShareText();
+    if(navigator.share){
+      try{await navigator.share({title:`Análisis ${rival.name}`,text});}catch(e){}
+    }else if(navigator.clipboard){
+      try{await navigator.clipboard.writeText(text);alert("✅ Resumen copiado al portapapeles");}catch(e){alert("No se pudo copiar al portapapeles");}
+    }else{alert("Tu navegador no soporta compartir/copiar");}
+  };
+
   return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+    <div className="rival-detail">
+      <style>{`@media print{body{background:#fff!important;}.rival-detail,.rival-detail *{background:#fff!important;color:#000!important;border-color:#bbb!important;box-shadow:none!important;}.rival-no-print{display:none!important;}.rival-detail h2,.rival-detail h3,.rival-detail span,.rival-detail p,.rival-detail div{color:#000!important;}}`}</style>
+      <div className="rival-no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,gap:8,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
           <button onClick={onBack} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="back" size={20}/></button>
-          <div><h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>{rival.name.toUpperCase()}</h2><span style={{color:C.gray,fontSize:12}}>{rival.date}{rival.round?` · ${rival.round}`:""}</span></div>
+          <div style={{minWidth:0}}><h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1,wordBreak:"break-word"}}>{rival.name.toUpperCase()}</h2><span style={{color:C.gray,fontSize:12}}>{rival.date}{rival.round?` · ${rival.round}`:""}</span></div>
         </div>
-        {isAdmin && <Btn small onClick={onEdit}><Icon name="edit" size={13}/> Editar</Btn>}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <Btn small outline onClick={handleShare}><Icon name="share" size={12}/> Compartir</Btn>
+          <Btn small outline onClick={handlePrint}><Icon name="print" size={12}/> Imprimir</Btn>
+          {isAdmin && <Btn small onClick={onEdit}><Icon name="edit" size={13}/> Editar</Btn>}
+        </div>
       </div>
+
       {rival.matches?.length>0&&(
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
           {[{l:"Partidos",v:rival.matches.length,c:C.accent},{l:"Ganados",v:wins,c:C.green},{l:"Empatados",v:draws,c:C.gold},{l:"Perdidos",v:losses,c:C.red}].map(s=>(
-            <div key={s.l} style={{flex:1,background:C.card,border:`1px solid ${s.c}33`,borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
+            <div key={s.l} style={{flex:"1 1 90px",background:C.card,border:`1px solid ${s.c}33`,borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
               <div style={{fontSize:22,fontWeight:700,color:s.c,fontFamily:FF}}>{s.v}</div>
               <div style={{fontSize:10,color:C.gray}}>{s.l.toUpperCase()}</div>
             </div>
           ))}
         </div>
       )}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <SCard title="Perfil" icon="shield" color={C.accent}><Row l="Ciudad" v={a.city}/><Row l="Colores" v={a.colors}/><Row l="DT" v={a.coach}/><Row l="Capitana" v={a.captain}/><Row l="Arquera" v={a.goalkeeper}/><Row l="Jugadoras clave" v={a.keyPlayers}/></SCard>
-        <SCard title="Con pelota" icon="target" color={C.accent}><Row l="Formación" v={a.formation}/><Row l="Salida" v={a.exitType}/><Row l="Lado" v={a.exitSide}/><Row l="Rematadoras" v={a.shooters}/></SCard>
-        <SCard title="Sin pelota" icon="flag" color={C.red}><Row l="Presión" v={a.pressType}/><Row l="Intensidad" v={a.pressIntensity}/><Row l="Bloque" v={a.blockType}/><Row l="Marcas" v={a.marksSystem}/></SCard>
-        <SCard title="Corners PC" icon="corner" color={C.purple}><Row l="Variantes" v={a.pcOffVariants}/><Row l="Ejecutora" v={a.pcOffExecutor}/><Row l="Rematadora" v={a.pcOffShooter}/></SCard>
-      </div>
-      {(a.strengths||a.weaknesses)&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          {a.strengths&&<SCard title="💪 Fortalezas" color={C.red}><p style={{color:"#ccc",fontSize:13,margin:0}}>{a.strengths}</p></SCard>}
-          {a.weaknesses&&<SCard title="⚠️ Para explotar" color={C.green}><p style={{color:"#ccc",fontSize:13,margin:0}}>{a.weaknesses}</p></SCard>}
+
+      {has("planBall","planNoBall","planPCOff","planPCDef")&&(
+        <div style={{background:C.gold+"10",border:`1.5px solid ${C.gold}66`,borderRadius:12,padding:18,marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+            <Icon name="star" size={16} color={C.gold}/>
+            <span style={{color:C.gold,fontSize:13,fontWeight:700,fontFamily:FF,letterSpacing:1.5}}>PLAN DE PARTIDO</span>
+          </div>
+          <Para l="Con pelota" v={a.planBall} accent={C.green}/>
+          <Para l="Sin pelota" v={a.planNoBall} accent={C.red}/>
+          {(a.planPCOff||a.planPCDef)&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14}}>
+              <Para l="PC ofensivos" v={a.planPCOff} accent={C.purple}/>
+              <Para l="PC defensivos" v={a.planPCDef} accent={C.purple}/>
+            </div>
+          )}
         </div>
       )}
+
+      {(a.strengths||a.weaknesses)&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
+          {a.strengths&&<SCard title="💪 Fortalezas del rival" color={C.red}><p style={{color:"#ddd",fontSize:13,margin:0,whiteSpace:"pre-wrap",lineHeight:1.55}}>{a.strengths}</p></SCard>}
+          {a.weaknesses&&<SCard title="⚠️ Para explotar" color={C.green}><p style={{color:"#ddd",fontSize:13,margin:0,whiteSpace:"pre-wrap",lineHeight:1.55}}>{a.weaknesses}</p></SCard>}
+        </div>
+      )}
+
+      {(has("city","colors","coach","assistant","physio")||has("goalkeeper","captain","keyPlayers","injuries"))&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>
+          {has("city","colors","coach","assistant","physio")&&(
+            <SCard title="Datos del Club" icon="shield" color={C.accent}>
+              <Row l="Ciudad" v={a.city}/>
+              <Row l="Colores" v={a.colors}/>
+              <Row l="DT Principal" v={a.coach}/>
+              <Row l="Asistente" v={a.assistant}/>
+              <Row l="Prep. Física" v={a.physio}/>
+            </SCard>
+          )}
+          {has("goalkeeper","captain","keyPlayers","injuries")&&(
+            <SCard title="Plantel" icon="shield" color={C.purple}>
+              <Row l="Arquera titular" v={a.goalkeeper}/>
+              <Row l="Capitana" v={a.captain}/>
+              <Row l="Jugadoras clave" v={a.keyPlayers}/>
+              <Row l="Bajas / Lesionadas" v={a.injuries}/>
+            </SCard>
+          )}
+        </div>
+      )}
+
+      {has("formation","offensiveStructure","attackNotes","exitType","exitKeyPlayer","exitSide","pressureApplied","arrivalZones","shooters","goalPlays","goalsLastMatch")&&(
+        <SCard title="Con pelota" icon="target" color={C.accent}>
+          {has("formation","offensiveStructure","attackNotes")&&(
+            <div>
+              <p style={{color:C.accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>SISTEMA / FORMACIÓN</p>
+              <Row l="Formación base" v={a.formation}/>
+              <Row l="Estructura ofensiva" v={a.offensiveStructure}/>
+              <Row l="Notas generales" v={a.attackNotes}/>
+            </div>
+          )}
+          {has("exitType","exitKeyPlayer","exitSide","pressureApplied")&&(
+            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,marginTop:10}}>
+              <p style={{color:C.accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>SALIDA DESDE EL FONDO</p>
+              <Row l="Tipo de salida" v={a.exitType}/>
+              <Row l="Jugadora clave" v={a.exitKeyPlayer}/>
+              <Row l="Lado predominante" v={a.exitSide}/>
+              <Row l="Presión aplicada" v={a.pressureApplied}/>
+            </div>
+          )}
+          {has("arrivalZones","shooters","goalPlays","goalsLastMatch")&&(
+            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,marginTop:10}}>
+              <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>LLEGADAS Y REMATES</p>
+              <Row l="Zonas de llegada" v={a.arrivalZones}/>
+              <Row l="Rematadoras" v={a.shooters}/>
+              <Row l="Jugadas de gol" v={a.goalPlays}/>
+              <Row l="Goles último partido" v={a.goalsLastMatch}/>
+            </div>
+          )}
+        </SCard>
+      )}
+
+      {has("pressType","pressIntensity","pressZone","pressTriggers","blockType","defensiveLine","vulnerableIn","marksSystem","whoMarksUs","dangerZones","transition")&&(
+        <SCard title="Sin pelota" icon="flag" color={C.red}>
+          {has("pressType","pressIntensity","pressZone","pressTriggers")&&(
+            <div>
+              <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>PRESSING</p>
+              <Row l="Tipo de presión" v={a.pressType}/>
+              <Row l="Intensidad" v={a.pressIntensity}/>
+              <Row l="Zona de inicio" v={a.pressZone}/>
+              <Row l="Triggers" v={a.pressTriggers}/>
+            </div>
+          )}
+          {has("blockType","defensiveLine","vulnerableIn","marksSystem")&&(
+            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,marginTop:10}}>
+              <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>BLOQUE DEFENSIVO</p>
+              <Row l="Tipo de bloque" v={a.blockType}/>
+              <Row l="Línea defensiva" v={a.defensiveLine}/>
+              <Row l="Vulnerable en" v={a.vulnerableIn}/>
+              <Row l="Sistema de marcas" v={a.marksSystem}/>
+            </div>
+          )}
+          {has("whoMarksUs","dangerZones","transition")&&(
+            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,marginTop:10}}>
+              <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 8px"}}>MARCAS Y TRANSICIONES</p>
+              <Row l="Quién nos marca" v={a.whoMarksUs}/>
+              <Row l="Zonas de peligro" v={a.dangerZones}/>
+              <Row l="Transición def→ataque" v={a.transition}/>
+            </div>
+          )}
+        </SCard>
+      )}
+
+      {has("pcOffVariants","pcOffExecutor","pcOffShooter","pcOffSecond","pcDefSystem","pcDefExit","pcDefRunner","pcDefGK")&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
+          {has("pcOffVariants","pcOffExecutor","pcOffShooter","pcOffSecond")&&(
+            <SCard title="PC Ofensivos (rival)" icon="corner" color={C.red}>
+              <Row l="Variantes" v={a.pcOffVariants}/>
+              <Row l="Ejecutora" v={a.pcOffExecutor}/>
+              <Row l="Rematadora" v={a.pcOffShooter}/>
+              <Row l="Jugadora 2do palo" v={a.pcOffSecond}/>
+            </SCard>
+          )}
+          {has("pcDefSystem","pcDefExit","pcDefRunner","pcDefGK")&&(
+            <SCard title="Nuestra defensa de PC" icon="corner" color={C.purple}>
+              <Row l="Formación defensiva" v={a.pcDefSystem}/>
+              <Row l="Primera salida" v={a.pcDefExit}/>
+              <Row l="Runner principal" v={a.pcDefRunner}/>
+              <Row l="Posición arquera" v={a.pcDefGK}/>
+            </SCard>
+          )}
+        </div>
+      )}
+
       {rival.matches?.length>0&&(
         <SCard title="Últimos partidos" icon="chart" color={C.accent}>
-          {[...rival.matches].reverse().slice(0,5).map((m,i)=>{
+          {[...rival.matches].reverse().slice(0,5).map((m,i,arr)=>{
             const gf=+m.goalsFor,gc=+m.goalsAgainst;const res=gf>gc?"W":gf===gc?"E":"L";const rc=res==="W"?C.green:res==="E"?C.gold:C.red;
-            return(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<4?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
+            return(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <Badge text={res} color={rc}/><span style={{color:C.white,fontWeight:700}}>CULP {gf} — {gc} {rival.name}</span>
               {m.scorers?.filter(g=>g.equipo==="visitante").map((g,j)=><Badge key={j} text={`⚽ ${g.nombre}`} color={C.red}/>)}
               <span style={{color:C.gray,fontSize:12,marginLeft:"auto"}}>{m.date}</span>
