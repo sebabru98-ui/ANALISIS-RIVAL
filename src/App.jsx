@@ -257,6 +257,63 @@ function computeStandingsFromFixture(fixture) {
   return Object.values(teams).map(t => ({...t, pts: t.pg*3+t.pe, dif: t.gf-t.gc}))
     .sort((a,b) => (b.pts-a.pts) || (b.dif-a.dif) || (b.gf-a.gf));
 }
+// ─── Helpers para vistas (últimos 5, próximo partido, evolución) ──────────
+function getLastNResults(fixture, teamName, n=5) {
+  const list = [];
+  for (const f of fixture) {
+    for (const m of f.matches) {
+      if (!m.played) continue;
+      if (m.home === teamName || m.away === teamName) {
+        const isHome = m.home === teamName;
+        const gf = isHome ? m.golesLocal : m.golesVisitante;
+        const ga = isHome ? m.golesVisitante : m.golesLocal;
+        const result = gf > ga ? "G" : gf < ga ? "P" : "E";
+        list.push({ result, gf, ga, opp: isHome ? m.away : m.home, fecha: f.label, isHome });
+      }
+    }
+  }
+  return list.slice(-n);
+}
+function getNextFechaIndex(fixture) {
+  for (let i = 0; i < fixture.length; i++) {
+    if (fixture[i].matches.some(m => !m.played)) return i;
+  }
+  return Math.max(0, fixture.length - 1);
+}
+function getNextCulpMatch(fixture) {
+  for (const f of fixture) {
+    for (const m of f.matches) {
+      if (m.played) continue;
+      if (m.home === "U. LA PLATA" || m.away === "U. LA PLATA") {
+        return { fecha: f.label, date: f.date, match: m, isHome: m.home === "U. LA PLATA", opp: m.home === "U. LA PLATA" ? m.away : m.home };
+      }
+    }
+  }
+  return null;
+}
+function getCulpPositionEvolution(fixture) {
+  const points = [];
+  for (let i = 0; i < fixture.length; i++) {
+    const upto = fixture.slice(0, i+1);
+    if (!upto[i].matches.some(m => m.played)) continue;
+    const st = computeStandingsFromFixture(upto);
+    const pos = st.findIndex(t => t.name === "U. LA PLATA");
+    if (pos >= 0) points.push({ label: fixture[i].label.replace(/Fecha\s*/i, "F"), pos: pos+1, pts: st[pos].pts });
+  }
+  return points;
+}
+function getH2H(fixture, teamA, teamB) {
+  const results = [];
+  for (const f of fixture) {
+    for (const m of f.matches) {
+      if (!m.played) continue;
+      if ((m.home===teamA && m.away===teamB) || (m.home===teamB && m.away===teamA)) {
+        results.push({ fecha: f.label, home: m.home, away: m.away, gl: m.golesLocal, gv: m.golesVisitante });
+      }
+    }
+  }
+  return results;
+}
 async function load(key) {
   try {
     const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data?key=eq." + encodeURIComponent(key) + "&select=value", {
@@ -606,7 +663,7 @@ function PlanillaScanner({rivalName,onApply,onClose,mode="scan"}) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // STANDINGS
 // ═══════════════════════════════════════════════════════════════════════════════
-function StandingsView({standings,setStandings}) {
+function StandingsView({standings,setStandings,fixture}) {
   const isAdmin = useIsAdmin();
   const [editing,setEditing]=useState(false);
   const [form,setForm]=useState(null);
@@ -619,6 +676,18 @@ function StandingsView({standings,setStandings}) {
     const sorted=[...s].sort((a,b)=>(b.pts-a.pts)||(b.dif-a.dif));
     setStandings(sorted);save(KEYS.standings,sorted);setEditing(false);
   };
+  const renderLast5 = teamName => {
+    const last = getLastNResults(fixture||[], teamName, 5);
+    if (last.length === 0) return <span style={{color:C.gray,fontSize:11}}>—</span>;
+    return (
+      <div style={{display:"inline-flex",gap:3,alignItems:"center",justifyContent:"center"}}>
+        {last.map((r,i)=>{
+          const bg = r.result==="G"?C.green:r.result==="P"?C.red:C.gold;
+          return <span key={i} title={`${r.fecha} · ${r.isHome?"vs":"@"} ${r.opp} ${r.gf}-${r.ga}`} style={{display:"inline-block",width:16,height:16,borderRadius:4,background:bg,color:"#000",fontSize:10,fontWeight:800,lineHeight:"16px",textAlign:"center",fontFamily:FF}}>{r.result}</span>;
+        })}
+      </div>
+    );
+  };
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
@@ -626,17 +695,18 @@ function StandingsView({standings,setStandings}) {
         {isAdmin && <Btn small onClick={()=>{setForm({...empty});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>}
       </div>
       <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead><tr style={{background:C.accent,color:C.bg}}>{(isAdmin?["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS",""]:["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS"]).map(h=><th key={h} style={{padding:"10px 8px",textAlign:h==="EQUIPO"?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:640}}>
+          <thead><tr style={{background:C.accent,color:C.bg}}>{(isAdmin?["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS","ÚLT 5",""]:["#","EQUIPO","PJ","PG","PE","PP","GF","GC","DIF","PTS","ÚLT 5"]).map(h=><th key={h} style={{padding:"10px 6px",textAlign:h==="EQUIPO"?"left":"center",fontFamily:FF,fontWeight:700,fontSize:11,letterSpacing:0.5}}>{h}</th>)}</tr></thead>
           <tbody>
-            {standings.length===0&&<tr><td colSpan={isAdmin?11:10} style={{textAlign:"center",padding:32,color:C.gray}}>No hay equipos cargados aún</td></tr>}
+            {standings.length===0&&<tr><td colSpan={isAdmin?12:11} style={{textAlign:"center",padding:32,color:C.gray}}>No hay equipos cargados aún</td></tr>}
             {standings.map((t,i)=>(
               <tr key={i} style={{background:t.isUs?C.purple+"22":i%2===0?C.card:C.card2,borderBottom:`1px solid ${C.border}`}}>
-                <td style={{textAlign:"center",padding:"10px 8px",color:C.gray,fontWeight:700}}>{i+1}</td>
-                <td style={{padding:"10px 8px",color:t.isUs?C.purple:C.white,fontWeight:t.isUs?700:400}}>{t.isUs&&"🔵 "}{t.name}</td>
-                {[t.pj,t.pg,t.pe,t.pp,t.gf,t.gc].map((v,j)=><td key={j} style={{textAlign:"center",padding:"10px 8px",color:"#ccc"}}>{v}</td>)}
-                <td style={{textAlign:"center",padding:"10px 8px",color:t.dif>0?C.green:t.dif<0?C.red:"#ccc",fontWeight:700}}>{t.dif>0?"+":""}{t.dif}</td>
-                <td style={{textAlign:"center",padding:"10px 8px",color:C.accent,fontWeight:700,fontSize:15}}>{t.pts}</td>
+                <td style={{textAlign:"center",padding:"10px 6px",color:C.gray,fontWeight:700}}>{i+1}</td>
+                <td style={{padding:"10px 6px",color:t.isUs?C.purple:C.white,fontWeight:t.isUs?700:400}}>{t.isUs&&"🔵 "}{t.name}</td>
+                {[t.pj,t.pg,t.pe,t.pp,t.gf,t.gc].map((v,j)=><td key={j} style={{textAlign:"center",padding:"10px 6px",color:"#ccc"}}>{v}</td>)}
+                <td style={{textAlign:"center",padding:"10px 6px",color:t.dif>0?C.green:t.dif<0?C.red:"#ccc",fontWeight:700}}>{t.dif>0?"+":""}{t.dif}</td>
+                <td style={{textAlign:"center",padding:"10px 6px",color:C.accent,fontWeight:700,fontSize:15}}>{t.pts}</td>
+                <td style={{textAlign:"center",padding:"10px 6px",whiteSpace:"nowrap"}}>{renderLast5(t.name)}</td>
                 {isAdmin && <td style={{textAlign:"center"}}>
                   <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                     <button onClick={()=>{setForm({...standings[i]});setEditIdx(i);setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
@@ -647,6 +717,12 @@ function StandingsView({standings,setStandings}) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div style={{marginTop:10,fontSize:11,color:C.gray,display:"flex",gap:14,flexWrap:"wrap"}}>
+        <span><span style={{display:"inline-block",width:10,height:10,borderRadius:3,background:C.green,marginRight:4,verticalAlign:"middle"}}/>Ganó</span>
+        <span><span style={{display:"inline-block",width:10,height:10,borderRadius:3,background:C.gold,marginRight:4,verticalAlign:"middle"}}/>Empató</span>
+        <span><span style={{display:"inline-block",width:10,height:10,borderRadius:3,background:C.red,marginRight:4,verticalAlign:"middle"}}/>Perdió</span>
+        <span style={{color:C.gray}}>· hover para ver detalle</span>
       </div>
       {editing&&(
         <Modal title={editIdx!==null?"Editar equipo":"Agregar equipo"} onClose={()=>setEditing(false)}>
@@ -1028,9 +1104,29 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
   const [editing, setEditing] = useState(null);
   const [showAdd, setShowAdd] = useState(null);
   const [newMatch, setNewMatch] = useState({home:"",away:""});
-  const [collapsed, setCollapsed] = useState({});
+  const nextIdx = getNextFechaIndex(fixture);
+  // Por defecto: colapsar todas las fechas EXCEPTO la próxima
+  const [collapsed, setCollapsed] = useState(()=>{
+    const init = {};
+    fixture.forEach((f, i) => { if (i !== nextIdx) init[f.id] = true; });
+    return init;
+  });
+  const fechaRefs = useRef({});
+  const didScroll = useRef(false);
+  // Hacer scroll automático a la próxima fecha al cargar (una sola vez)
+  useEffect(() => {
+    if (didScroll.current) return;
+    if (nextIdx < 0 || !fixture[nextIdx]) return;
+    const el = fechaRefs.current[fixture[nextIdx].id];
+    if (el) {
+      setTimeout(() => el.scrollIntoView({behavior:"smooth", block:"start"}), 150);
+      didScroll.current = true;
+    }
+  }, [fixture, nextIdx]);
 
   const toggleCollapsed = id => setCollapsed(prev => ({...prev, [id]: !prev[id]}));
+  const expandAll = () => setCollapsed({});
+  const collapseAll = () => { const all = {}; fixture.forEach(f => all[f.id] = true); setCollapsed(all); };
 
   function applyPaste() {
     const parsed = parseFixturePaste(pasteText);
@@ -1176,10 +1272,16 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>FIXTURE</h2>
-        {isAdmin && <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <Btn small color={C.purple} onClick={()=>setShowPaste(true)}><Icon name="upload" size={12}/> Pegar fixture</Btn>
-          <Btn small outline onClick={addFecha}><Icon name="plus" size={12}/> Nueva fecha</Btn>
-        </div>}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {fixture.length>1 && <>
+            <Btn small outline onClick={expandAll}><Icon name="chevron" size={12}/> Expandir todo</Btn>
+            <Btn small outline onClick={collapseAll}>Colapsar todo</Btn>
+          </>}
+          {isAdmin && <>
+            <Btn small color={C.purple} onClick={()=>setShowPaste(true)}><Icon name="upload" size={12}/> Pegar fixture</Btn>
+            <Btn small outline onClick={addFecha}><Icon name="plus" size={12}/> Nueva fecha</Btn>
+          </>}
+        </div>
       </div>
       {fixture.length === 0 && (
         <div style={{textAlign:"center",padding:"48px 20px",background:C.card,border:`1px dashed ${C.border}`,borderRadius:12}}>
@@ -1193,11 +1295,13 @@ function FixtureView({fixture, setFixture, standings, setStandings, scorers, set
         const total = f.matches.length;
         const played = f.matches.filter(m=>m.played).length;
         const isCollapsed = collapsed[f.id];
+        const isNext = fi === nextIdx;
         return (
-          <div key={f.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,marginBottom:12,overflow:"hidden"}}>
+          <div key={f.id} ref={el => { if(el) fechaRefs.current[f.id] = el; }} style={{background:C.card,border:`1px solid ${isNext?C.gold+"66":C.border}`,borderRadius:12,marginBottom:12,overflow:"hidden",boxShadow:isNext?`0 0 0 1px ${C.gold}33`:"none",scrollMarginTop:70}}>
             <div onClick={()=>toggleCollapsed(f.id)} style={{padding:"12px 14px",background:C.card2,borderBottom:isCollapsed?"none":`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",gap:8}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                <span style={{color:C.accent,fontFamily:FF,fontWeight:700,fontSize:16,letterSpacing:1}}>{f.label.toUpperCase()}</span>
+                <span style={{color:isNext?C.gold:C.accent,fontFamily:FF,fontWeight:700,fontSize:16,letterSpacing:1}}>{f.label.toUpperCase()}</span>
+                {isNext && <Badge text="PRÓXIMA" color={C.gold}/>}
                 {f.date && <span style={{color:C.gray,fontSize:11}}>{f.date}</span>}
                 <Badge text={`${played}/${total}`} color={played===total&&total>0?C.green:C.accent}/>
               </div>
@@ -1887,12 +1991,221 @@ function RivalsView({rivals,onNew,onView,onEdit,onDelete}) {
   );
 }
 // ═══════════════════════════════════════════════════════════════════════════════
+// CULP EVOLUTION CHART (SVG puro, sin dependencias)
+// ═══════════════════════════════════════════════════════════════════════════════
+function CulpEvolutionChart({fixture, totalTeams=14}) {
+  const data = getCulpPositionEvolution(fixture||[]);
+  if (data.length < 2) {
+    return (
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20,textAlign:"center",color:C.gray,fontSize:12}}>
+        Aún no hay datos suficientes para el gráfico (se necesitan al menos 2 fechas jugadas).
+      </div>
+    );
+  }
+  const W = 600, H = 200, padL = 32, padR = 16, padT = 14, padB = 32;
+  const maxPos = Math.max(totalTeams, ...data.map(d=>d.pos));
+  const minPos = 1;
+  const xStep = (W - padL - padR) / Math.max(1, data.length - 1);
+  const yFor = pos => padT + ((pos - minPos) / (maxPos - minPos)) * (H - padT - padB);
+  const xFor = i => padL + i * xStep;
+  const path = data.map((d,i)=> (i===0?"M":"L") + xFor(i).toFixed(1) + " " + yFor(d.pos).toFixed(1)).join(" ");
+  const last = data[data.length-1];
+  const best = data.reduce((m,d)=>d.pos<m.pos?d:m, data[0]);
+  // Marcas del eje Y: 1, mediana, último
+  const yTicks = [1, Math.ceil((1+maxPos)/2), maxPos];
+  return (
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 10px 8px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"0 6px 8px"}}>
+        <span style={{color:C.gray,fontSize:10,letterSpacing:0.8}}>EVOLUCIÓN EN LA TABLA</span>
+        <span style={{color:C.gold,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}>MEJOR: #{best.pos} ({best.label})</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}} preserveAspectRatio="xMidYMid meet">
+        {/* Grid horizontal */}
+        {yTicks.map((p,i)=>(
+          <g key={i}>
+            <line x1={padL} x2={W-padR} y1={yFor(p)} y2={yFor(p)} stroke={C.border} strokeWidth="1" strokeDasharray="3,3"/>
+            <text x={padL-6} y={yFor(p)+3} textAnchor="end" fill={C.gray} fontSize="10" fontFamily="sans-serif">#{p}</text>
+          </g>
+        ))}
+        {/* Línea */}
+        <path d={path} stroke={C.accent} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Puntos */}
+        {data.map((d,i)=>(
+          <g key={i}>
+            <circle cx={xFor(i)} cy={yFor(d.pos)} r={i===data.length-1?5:3.5} fill={i===data.length-1?C.gold:C.accent} stroke={C.bg} strokeWidth="1.5"/>
+            <text x={xFor(i)} y={H-padB+14} textAnchor="middle" fill={C.gray} fontSize="9" fontFamily="sans-serif">{d.label}</text>
+          </g>
+        ))}
+        {/* Etiqueta último punto */}
+        <text x={xFor(data.length-1)} y={yFor(last.pos)-10} textAnchor="middle" fill={C.gold} fontSize="11" fontWeight="700" fontFamily="sans-serif">#{last.pos}</text>
+      </svg>
+    </div>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// RIVAL DOSSIER (Modal de scouting del próximo rival)
+// ═══════════════════════════════════════════════════════════════════════════════
+function RivalDossier({fixture, standings, scorers, cards, rivals, onClose}) {
+  const next = getNextCulpMatch(fixture||[]);
+  if (!next) {
+    return (
+      <Modal title="Dossier — sin próximo rival" onClose={onClose}>
+        <p style={{color:C.gray,fontSize:13,margin:"4px 0 16px"}}>No hay próximos partidos de CULP cargados en el fixture.</p>
+        <div style={{display:"flex",justifyContent:"flex-end"}}><Btn outline onClick={onClose}>Cerrar</Btn></div>
+      </Modal>
+    );
+  }
+  const opp = next.opp;
+  const oppRow = (standings||[]).find(t => t.name === opp);
+  const culpRow = (standings||[]).find(t => t.isUs);
+  const last5Opp = getLastNResults(fixture||[], opp, 5);
+  const last5Culp = getLastNResults(fixture||[], "U. LA PLATA", 5);
+  const h2hFixture = getH2H(fixture||[], "U. LA PLATA", opp);
+  const rivalProfile = (rivals||[]).find(r => r.name?.toLowerCase() === opp.toLowerCase());
+  const oppScorers = (scorers||[]).filter(s => s.team === opp).slice(0, 6);
+  const oppCards = (cards||[]).filter(c => c.team === opp).sort((a,b)=> ((b.roja||0)*3+(b.amarilla||0)*2+(b.verde||0)) - ((a.roja||0)*3+(a.amarilla||0)*2+(a.verde||0))).slice(0, 6);
+
+  const Streak = ({results}) => results.length===0 ? <span style={{color:C.gray,fontSize:11}}>—</span> : (
+    <div style={{display:"inline-flex",gap:3}}>
+      {results.map((r,i)=>{
+        const bg = r.result==="G"?C.green:r.result==="P"?C.red:C.gold;
+        return <span key={i} title={`${r.fecha} · ${r.isHome?"vs":"@"} ${r.opp} ${r.gf}-${r.ga}`} style={{display:"inline-block",width:18,height:18,borderRadius:4,background:bg,color:"#000",fontSize:11,fontWeight:800,lineHeight:"18px",textAlign:"center",fontFamily:FF}}>{r.result}</span>;
+      })}
+    </div>
+  );
+
+  const StatRow = ({label, culp, rival}) => (
+    <div style={{display:"grid",gridTemplateColumns:"1fr 90px 1fr",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+      <div style={{textAlign:"right",color:C.accent,fontWeight:700,fontFamily:FF,fontSize:15}}>{culp ?? "—"}</div>
+      <div style={{textAlign:"center",color:C.gray,fontSize:10,letterSpacing:0.8}}>{label}</div>
+      <div style={{color:C.red,fontWeight:700,fontFamily:FF,fontSize:15}}>{rival ?? "—"}</div>
+    </div>
+  );
+
+  return (
+    <Modal title={`DOSSIER · vs ${opp}`} onClose={onClose} wide>
+      {/* Header partido */}
+      <div style={{background:`linear-gradient(135deg,${C.gold}22,${C.accent}11)`,border:`1px solid ${C.gold}44`,borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={{color:C.gold,fontSize:10,letterSpacing:1,fontFamily:FF}}>PRÓXIMO PARTIDO</div>
+            <div style={{color:C.white,fontSize:18,fontWeight:700,fontFamily:FF,marginTop:4}}>
+              {next.isHome ? "🔵 CULP" : `🔴 ${opp}`} <span style={{color:C.gray,fontSize:14,margin:"0 6px"}}>vs</span> {next.isHome ? `🔴 ${opp}` : "🔵 CULP"}
+            </div>
+            <div style={{color:C.gray,fontSize:12,marginTop:4}}>{next.fecha} {next.match.date && `· ${next.match.date}`}</div>
+          </div>
+          <Badge text={next.isHome ? "LOCAL" : "VISITANTE"} color={next.isHome ? C.accent : C.purple}/>
+        </div>
+      </div>
+
+      {/* Stats lado a lado */}
+      <p style={{color:C.gray,fontSize:10,letterSpacing:0.8,margin:"0 0 6px"}}>COMPARATIVA EN EL TORNEO</p>
+      <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:"6px 14px",marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 90px 1fr",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{textAlign:"right",color:C.accent,fontWeight:700,fontFamily:FF,fontSize:13}}>🔵 CULP</div>
+          <div></div>
+          <div style={{color:C.red,fontWeight:700,fontFamily:FF,fontSize:13}}>🔴 {opp}</div>
+        </div>
+        <StatRow label="POS" culp={culpRow?`#${standings.findIndex(t=>t.isUs)+1}`:"—"} rival={oppRow?`#${standings.findIndex(t=>t.name===opp)+1}`:"—"}/>
+        <StatRow label="PUNTOS" culp={culpRow?.pts} rival={oppRow?.pts}/>
+        <StatRow label="PJ" culp={culpRow?.pj} rival={oppRow?.pj}/>
+        <StatRow label="G - E - P" culp={culpRow?`${culpRow.pg}-${culpRow.pe}-${culpRow.pp}`:"—"} rival={oppRow?`${oppRow.pg}-${oppRow.pe}-${oppRow.pp}`:"—"}/>
+        <StatRow label="GF" culp={culpRow?.gf} rival={oppRow?.gf}/>
+        <StatRow label="GC" culp={culpRow?.gc} rival={oppRow?.gc}/>
+        <StatRow label="DIF" culp={culpRow?(culpRow.dif>0?"+":"")+culpRow.dif:"—"} rival={oppRow?(oppRow.dif>0?"+":"")+oppRow.dif:"—"}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 90px 1fr",alignItems:"center",padding:"10px 0"}}>
+          <div style={{textAlign:"right"}}><Streak results={last5Culp}/></div>
+          <div style={{textAlign:"center",color:C.gray,fontSize:10,letterSpacing:0.8}}>ÚLT. 5</div>
+          <div><Streak results={last5Opp}/></div>
+        </div>
+      </div>
+
+      {/* Head to head en el fixture */}
+      {h2hFixture.length > 0 && (
+        <div style={{marginBottom:14}}>
+          <p style={{color:C.gray,fontSize:10,letterSpacing:0.8,margin:"0 0 6px"}}>HISTORIAL ENTRE AMBOS — TORNEO ACTUAL</p>
+          <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden"}}>
+            {h2hFixture.map((r,i)=>{
+              const culpIsHome = r.home === "U. LA PLATA";
+              const culpGoals = culpIsHome ? r.gl : r.gv;
+              const oppGoals = culpIsHome ? r.gv : r.gl;
+              const win = culpGoals > oppGoals ? "G" : culpGoals < oppGoals ? "P" : "E";
+              const winColor = win==="G"?C.green:win==="P"?C.red:C.gold;
+              return (
+                <div key={i} style={{display:"grid",gridTemplateColumns:"60px 1fr 80px 1fr 22px",alignItems:"center",padding:"9px 12px",gap:8,borderBottom:i<h2hFixture.length-1?`1px solid ${C.border}`:"none"}}>
+                  <span style={{color:C.gray,fontSize:11}}>{r.fecha}</span>
+                  <span style={{textAlign:"right",color:r.home==="U. LA PLATA"?C.accent:C.white,fontSize:13,fontWeight:r.home==="U. LA PLATA"?700:400}}>{r.home}</span>
+                  <span style={{textAlign:"center",color:C.white,fontWeight:700,fontFamily:FF,fontSize:15}}>{r.gl} - {r.gv}</span>
+                  <span style={{color:r.away==="U. LA PLATA"?C.accent:C.white,fontSize:13,fontWeight:r.away==="U. LA PLATA"?700:400}}>{r.away}</span>
+                  <span style={{display:"inline-block",width:18,height:18,borderRadius:4,background:winColor,color:"#000",fontSize:11,fontWeight:800,lineHeight:"18px",textAlign:"center",fontFamily:FF}}>{win}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Goleadoras y tarjetas en columnas */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+        <div>
+          <p style={{color:C.gray,fontSize:10,letterSpacing:0.8,margin:"0 0 6px"}}>GOLEADORAS DEL RIVAL</p>
+          <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",minHeight:60}}>
+            {oppScorers.length === 0 && <div style={{padding:14,color:C.gray,fontSize:12,textAlign:"center"}}>Sin datos</div>}
+            {oppScorers.map((s,i)=>{
+              const prom = s.pj && s.pj>0 ? (s.goals/s.pj).toFixed(2) : "—";
+              return (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderBottom:i<oppScorers.length-1?`1px solid ${C.border}`:"none"}}>
+                  <span style={{color:C.gray,fontSize:11,minWidth:14}}>{i+1}</span>
+                  <span style={{flex:1,color:C.white,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</span>
+                  <span style={{color:C.accent,fontWeight:700,fontFamily:FF,fontSize:14}}>{s.goals}</span>
+                  <span style={{color:C.green,fontSize:10,minWidth:32,textAlign:"right"}}>{prom}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <p style={{color:C.gray,fontSize:10,letterSpacing:0.8,margin:"0 0 6px"}}>TARJETAS DEL RIVAL</p>
+          <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",minHeight:60}}>
+            {oppCards.length === 0 && <div style={{padding:14,color:C.gray,fontSize:12,textAlign:"center"}}>Sin datos</div>}
+            {oppCards.map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 10px",borderBottom:i<oppCards.length-1?`1px solid ${C.border}`:"none"}}>
+                <span style={{flex:1,color:C.white,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                {(c.verde||0)>0 && <span style={{color:C.green,fontSize:11,fontWeight:700}}>🟢{c.verde}</span>}
+                {(c.amarilla||0)>0 && <span style={{color:C.gold,fontSize:11,fontWeight:700}}>🟡{c.amarilla}</span>}
+                {(c.roja||0)>0 && <span style={{color:C.red,fontSize:11,fontWeight:700}}>🔴{c.roja}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Notas del análisis manual del rival si existen */}
+      {rivalProfile && (
+        <div style={{marginBottom:14}}>
+          <p style={{color:C.gray,fontSize:10,letterSpacing:0.8,margin:"0 0 6px"}}>FICHA DE SCOUTING (cargada en Rivales)</p>
+          <div style={{background:C.purple+"11",border:`1px solid ${C.purple}33`,borderRadius:10,padding:12,fontSize:12,color:C.white,lineHeight:1.5}}>
+            {rivalProfile.style && <div><b style={{color:C.purple}}>Estilo:</b> {rivalProfile.style}</div>}
+            {rivalProfile.shooters && <div style={{marginTop:4}}><b style={{color:C.purple}}>Tiradoras:</b> {rivalProfile.shooters}</div>}
+            {rivalProfile.notes && <div style={{marginTop:4}}><b style={{color:C.purple}}>Notas:</b> {rivalProfile.notes}</div>}
+            {!rivalProfile.style && !rivalProfile.shooters && !rivalProfile.notes && <span style={{color:C.gray}}>Ficha sin observaciones cargadas todavía.</span>}
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"flex",justifyContent:"flex-end"}}><Btn onClick={onClose}>Cerrar</Btn></div>
+    </Modal>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
-function Dashboard({rivals,standings,scorers,setView}) {
+function Dashboard({rivals,standings,scorers,fixture,cards,setView}) {
+  const [showDossier, setShowDossier] = useState(false);
   const totalWins=rivals.reduce((a,r)=>a+(r.matches?.filter(m=>+m.goalsFor>+m.goalsAgainst).length||0),0);
   const usPos=standings.findIndex(t=>t.isUs);
   const culpScorers=scorers.filter(s=>s.team==="U. LA PLATA");
+  const next = getNextCulpMatch(fixture||[]);
   const stats=[{l:"Rivales analizados",v:rivals.length,c:C.accent,icon:"shield"},{l:"Partidos registrados",v:rivals.reduce((a,r)=>a+(r.matches?.length||0),0),c:C.purple,icon:"chart"},{l:"Victorias",v:totalWins,c:C.green,icon:"trophy"},{l:"Posición actual",v:usPos>=0?`#${usPos+1}`:"—",c:C.gold,icon:"star"}];
   return(
     <div>
@@ -1900,6 +2213,21 @@ function Dashboard({rivals,standings,scorers,setView}) {
         <div style={{width:40,height:40,background:C.accent+"22",border:`2px solid ${C.accent}`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🏑</div>
         <div><h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>CULP HOCKEY</h2><p style={{margin:0,color:C.gray,fontSize:10,letterSpacing:0.5}}>PRIMERA DAMAS · ANÁLISIS DE RIVALES</p></div>
       </div>
+      {/* Próximo partido + dossier */}
+      {next && (
+        <div onClick={()=>setShowDossier(true)} style={{background:`linear-gradient(135deg,${C.gold}22,${C.accent}11)`,border:`1px solid ${C.gold}55`,borderRadius:12,padding:16,marginBottom:16,cursor:"pointer",transition:"transform 0.15s"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <div>
+              <div style={{color:C.gold,fontSize:10,letterSpacing:1,fontFamily:FF,fontWeight:700}}>PRÓXIMO PARTIDO · {next.fecha}</div>
+              <div style={{color:C.white,fontSize:18,fontWeight:700,fontFamily:FF,marginTop:6}}>
+                {next.isHome ? "🔵 CULP" : `🔴 ${next.opp}`} <span style={{color:C.gray,fontSize:14,margin:"0 6px"}}>vs</span> {next.isHome ? `🔴 ${next.opp}` : "🔵 CULP"}
+              </div>
+              {next.match.date && <div style={{color:C.gray,fontSize:11,marginTop:4}}>{next.match.date} · {next.isHome ? "Local" : "Visitante"}</div>}
+            </div>
+            <Btn small color={C.gold} onClick={(e)=>{e.stopPropagation();setShowDossier(true);}}><Icon name="eye" size={12}/> Ver dossier</Btn>
+          </div>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
         {stats.map(s=>(
           <div key={s.l} style={{background:C.card,border:`1px solid ${s.c}22`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1908,11 +2236,18 @@ function Dashboard({rivals,standings,scorers,setView}) {
           </div>
         ))}
       </div>
+      {/* Gráfico de evolución de CULP */}
+      {fixture && fixture.length > 0 && (
+        <div style={{marginBottom:16}}>
+          <CulpEvolutionChart fixture={fixture} totalTeams={Math.max(14, standings.length)}/>
+        </div>
+      )}
       {/* CTA importar */}
       <div style={{background:`linear-gradient(135deg,${C.purple}33,${C.accent}22)`,border:`1px solid ${C.accent}33`,borderRadius:12,padding:16,marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
         <div><p style={{margin:0,color:C.white,fontWeight:700,fontSize:13,fontFamily:FF,letterSpacing:0.5}}>📄 ¿TENÉS UNA PLANILLA NUEVA?</p><p style={{margin:"4px 0 0",color:C.gray,fontSize:12}}>Subí el PDF oficial o una foto y Claude carga todos los datos</p></div>
         <Btn small color={C.purple} onClick={()=>setView("rivals")}>Ir a rivales</Btn>
       </div>
+      {showDossier && <RivalDossier fixture={fixture} standings={standings} scorers={scorers} cards={cards} rivals={rivals} onClose={()=>setShowDossier(false)}/>}
       {/* Goleadoras CULP */}
       {culpScorers.length>0&&(
         <div style={{marginBottom:16}}>
@@ -2095,12 +2430,12 @@ export default function App() {
         </div>
         {/* Content */}
         <div style={{flex:1,padding:"18px 14px 80px",overflowY:"auto"}}>
-          {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} setView={setView}/>}
+          {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} fixture={fixture} cards={cards} setView={setView}/>}
           {view==="rivals"&&!subview&&<RivalsView rivals={rivals} onNew={()=>{setSelected(null);setSubview("new");}} onView={r=>{setSelected(r);setSubview("detail");}} onEdit={r=>{setSelected(r);setSubview("edit");}} onDelete={deleteRival}/>}
           {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla}/>}
           {view==="rivals"&&subview==="edit"&&<RivalForm rival={selected} onSave={saveRival} onCancel={()=>{setSubview(null);setSelected(null);}} onUpdateScorers={updateScorersFromPlanilla}/>}
           {view==="rivals"&&subview==="detail"&&<RivalDetail rival={selected} onEdit={()=>setSubview("edit")} onBack={()=>{setSubview(null);setSelected(null);}}/>}
-          {view==="standings"&&<StandingsView standings={standings} setStandings={setStandings}/>}
+          {view==="standings"&&<StandingsView standings={standings} setStandings={setStandings} fixture={fixture}/>}
           {view==="scorers"&&<ScorersView scorers={scorers} setScorers={setScorers} rivals={rivals}/>}
           {view==="fixture"&&<FixtureView fixture={fixture} setFixture={setFixture} standings={standings} setStandings={setStandings} scorers={scorers} setScorers={setScorers} cards={cards} setCards={setCards} rivals={rivals} setRivals={setRivals}/>}
           {view==="cards"&&<CardsView cards={cards} setCards={setCards}/>}
