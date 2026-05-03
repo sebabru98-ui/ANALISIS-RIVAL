@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import React from "react";
 // ─── Datos iniciales goleadoras (pre-cargadas desde xlsx) ──────────────────
-const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals":5,"pc":0},{"name":"Cairo, Sofia","team":"M. MORENO","goals":4,"pc":0},{"name":"Castiglione Corvalan, Guadalupe","team":"C.A.S.I.","goals":4,"pc":0},{"name":"Gluch, Carolina","team":"MACABI","goals":4,"pc":0},{"name":"Ravetta, Lara","team":"M. GRANDE","goals":4,"pc":0},{"name":"Seoane, Tiziana","team":"PUERTO NIZUC","goals":4,"pc":0},{"name":"Curri, Manuela","team":"M. MORENO","goals":3,"pc":0},{"name":"Dimarco, Mia","team":"PUERTO NIZUC","goals":3,"pc":0},{"name":"Fernandez, Sol","team":"M. MORENO","goals":3,"pc":0},{"name":"Galleano, Valentina","team":"PUCARA","goals":3,"pc":0},{"name":"Pastorelli, Martina Sol","team":"M. MORENO","goals":3,"pc":0},{"name":"Rodriguez, Macarena","team":"PUERTO NIZUC","goals":3,"pc":0},{"name":"Basini, Renata","team":"C.A.S.I.","goals":2,"pc":0},{"name":"Bravo, Lucila Malena","team":"B. HIPOTECARIO","goals":2,"pc":0},{"name":"Cuitiño Christin, Melisa","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Febles Tripori, Luna Rocio","team":"LANUS","goals":2,"pc":0},{"name":"Fernandez, Juana","team":"HINDU CLUB","goals":2,"pc":0},{"name":"Gamarra, Milagros","team":"PUCARA","goals":2,"pc":0},{"name":"Gluch, Julieta","team":"MACABI","goals":2,"pc":0},{"name":"Gomez, Rocio Jazmin","team":"LANUS","goals":2,"pc":0},{"name":"Landolfi, Agustina","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Moore Castelli, Camila","team":"U. LA PLATA","goals":2,"pc":0},{"name":"Semcheff, Sofia Agustina","team":"CIUDAD","goals":2,"pc":0},{"name":"Sosa, Milagros","team":"BANFIELD","goals":2,"pc":0},{"name":"Villarmea, Julieta","team":"B. HIPOTECARIO","goals":2,"pc":0},{"name":"Vullo, Lucía","team":"BANCO CIUDAD","goals":2,"pc":0},{"name":"Arouxet, Juana","team":"C.I.S.S.A.B.","goals":2,"pc":0},{"name":"Olivetto, Clara","team":"M. MORENO","goals":2,"pc":0},{"name":"Holmgren, Trinidad","team":"C.A.S.I.","goals":2,"pc":0},{"name":"Jara, Milagros","team":"PUERTO NIZUC","goals":2,"pc":0},{"name":"Abate, Agustina Manon","team":"LANUS","goals":1,"pc":0},{"name":"Almaso, Candela","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Alvarez, Morena","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Berger, Victoria","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Burman, Julieta","team":"M. MORENO","goals":1,"pc":0},{"name":"Canzobre, Martina","team":"PUCARA","goals":1,"pc":0},{"name":"Capalbo, Mercedes","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Dominguez Velazco, Justina","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Durante, Pilar","team":"U. LA PLATA","goals":1,"pc":0},{"name":"Etcheverry, Ines","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Fernandez, Bernardita","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Franco, Adriana Raquel","team":"M. MORENO","goals":1,"pc":0},{"name":"Galleano, Candela","team":"PUCARA","goals":1,"pc":0},{"name":"Gomez Lagrenade, Violeta","team":"PUCARA","goals":1,"pc":0},{"name":"Gutierrez, Agustina Aylen","team":"B. HIPOTECARIO","goals":1,"pc":0},{"name":"Hileman, J Belen","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Kaufman, Nicole","team":"MACABI","goals":1,"pc":0},{"name":"Lopez, Delfina","team":"B. HIPOTECARIO","goals":1,"pc":0},{"name":"Lucini, Martina","team":"CIUDAD","goals":1,"pc":0},{"name":"Luis, Lourdes Rocio","team":"M. GRANDE","goals":1,"pc":0},{"name":"Mattiazzi, Juana","team":"M. MORENO","goals":1,"pc":0},{"name":"Muñoz, Candela","team":"PUCARA","goals":1,"pc":0},{"name":"Murgo, Anabella","team":"CIUDAD","goals":1,"pc":0},{"name":"Pazo, Mariana","team":"PUCARA","goals":1,"pc":0},{"name":"Sapir, Sofía","team":"MACABI","goals":1,"pc":0},{"name":"Tandeitnic, Luana","team":"MACABI","goals":1,"pc":0},{"name":"Testone, Valentina","team":"LANUS","goals":1,"pc":0},{"name":"Torreiro, Maria Pilar","team":"LANUS","goals":1,"pc":0},{"name":"Camporotondo, Delfina","team":"PUERTO NIZUC","goals":1,"pc":0},{"name":"Fernandez Rubio, Agostina","team":"BANFIELD","goals":1,"pc":0},{"name":"Garcia Larralde, Julieta","team":"M. GRANDE","goals":1,"pc":0},{"name":"Grane, Juana","team":"HINDU CLUB","goals":1,"pc":0},{"name":"Ruiz, Valentina","team":"LANUS","goals":1,"pc":0},{"name":"Uranga Imaz, Juana","team":"C.A.S.I.","goals":1,"pc":0},{"name":"Witlis, Morena","team":"MACABI","goals":1,"pc":0}];
+const INITIAL_SCORERS = [{"name":"Carnevali, Oriana","team":"U. LA PLATA","goals":5,"pj":8,"pc":0},{"name":"Curri, Manuela","team":"M. MORENO","goals":5,"pj":8,"pc":0},{"name":"Castiglione Corvalan, Guadalupe","team":"C.A.S.I.","goals":4,"pj":8,"pc":0},{"name":"Cuitiño Christin, Melisa","team":"BANCO CIUDAD","goals":4,"pj":8,"pc":0},{"name":"Dimarco, Mia","team":"PUERTO NIZUC","goals":4,"pj":8,"pc":0},{"name":"Gamarra, Milagros","team":"PUCARA","goals":4,"pj":8,"pc":0},{"name":"Gluch, Carolina","team":"MACABI","goals":4,"pj":8,"pc":0},{"name":"Ravetta, Lara","team":"M. GRANDE","goals":4,"pj":8,"pc":0},{"name":"Seoane, Tiziana","team":"PUERTO NIZUC","goals":4,"pj":8,"pc":0},{"name":"Arouxet, Juana","team":"C.I.S.S.A.B.","goals":4,"pj":7,"pc":0},{"name":"Cairo, Sofia","team":"M. MORENO","goals":4,"pj":6,"pc":0},{"name":"Bravo, Lucila Malena","team":"B. HIPOTECARIO","goals":3,"pj":8,"pc":0},{"name":"Fernandez, Sol","team":"M. MORENO","goals":3,"pj":8,"pc":0},{"name":"Galleano, Valentina","team":"PUCARA","goals":3,"pj":8,"pc":0},{"name":"Gluch, Julieta","team":"MACABI","goals":3,"pj":8,"pc":0},{"name":"Pastorelli, Martina Sol","team":"M. MORENO","goals":3,"pj":8,"pc":0},{"name":"Rodriguez, Macarena","team":"PUERTO NIZUC","goals":3,"pj":8,"pc":0},{"name":"Villarmea, Julieta","team":"B. HIPOTECARIO","goals":3,"pj":8,"pc":0},{"name":"Holmgren, Trinidad","team":"C.A.S.I.","goals":3,"pj":6,"pc":0},{"name":"Basini, Renata","team":"C.A.S.I.","goals":2,"pj":8,"pc":0},{"name":"Berger, Victoria","team":"U. LA PLATA","goals":2,"pj":8,"pc":0},{"name":"Canzobre, Martina","team":"PUCARA","goals":2,"pj":8,"pc":0},{"name":"Febles Tripori, Luna Rocio","team":"LANUS","goals":2,"pj":8,"pc":0},{"name":"Fernandez, Juana","team":"HINDU CLUB","goals":2,"pj":8,"pc":0},{"name":"Gomez, Rocio Jazmin","team":"LANUS","goals":2,"pj":8,"pc":0},{"name":"Landolfi, Agustina","team":"BANCO CIUDAD","goals":2,"pj":8,"pc":0},{"name":"Lucini, Martina","team":"CIUDAD","goals":2,"pj":8,"pc":0},{"name":"Moore Castelli, Camila","team":"U. LA PLATA","goals":2,"pj":8,"pc":0},{"name":"Semcheff, Sofia Agustina","team":"CIUDAD","goals":2,"pj":8,"pc":0},{"name":"Sosa, Milagros","team":"BANFIELD","goals":2,"pj":8,"pc":0},{"name":"Testone, Valentina","team":"LANUS","goals":2,"pj":8,"pc":0},{"name":"Vullo, Lucía","team":"BANCO CIUDAD","goals":2,"pj":8,"pc":0},{"name":"Jara, Milagros","team":"PUERTO NIZUC","goals":2,"pj":6,"pc":0},{"name":"Olivetto, Clara","team":"M. MORENO","goals":2,"pj":6,"pc":0},{"name":"Chaves, Nahir","team":"LANUS","goals":2,"pj":3,"pc":0},{"name":"Abate, Agustina Manon","team":"LANUS","goals":1,"pj":8,"pc":0},{"name":"Almaso, Candela","team":"U. LA PLATA","goals":1,"pj":8,"pc":0},{"name":"Alvarez, Morena","team":"U. LA PLATA","goals":1,"pj":8,"pc":0},{"name":"Blanco Nardin, Juana","team":"M. GRANDE","goals":1,"pj":8,"pc":0},{"name":"Burman, Julieta","team":"M. MORENO","goals":1,"pj":8,"pc":0},{"name":"Capalbo, Mercedes","team":"HINDU CLUB","goals":1,"pj":8,"pc":0},{"name":"Chao, Natasha Alexia","team":"BANCO CIUDAD","goals":1,"pj":8,"pc":0},{"name":"Colomba, Maria Ines","team":"C.I.S.S.A.B.","goals":1,"pj":8,"pc":0},{"name":"Durante, Pilar","team":"U. LA PLATA","goals":1,"pj":8,"pc":0},{"name":"Etcheverry, Ines","team":"C.A.S.I.","goals":1,"pj":8,"pc":0},{"name":"Fernandez, Bernardita","team":"HINDU CLUB","goals":1,"pj":8,"pc":0},{"name":"Fernandez, Santina","team":"HINDU CLUB","goals":1,"pj":8,"pc":0},{"name":"Galleano, Candela","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Garansini, Carolina","team":"PUERTO NIZUC","goals":1,"pj":8,"pc":0},{"name":"Gomez Lagrenade, Violeta","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Gutierrez, Agustina Aylen","team":"B. HIPOTECARIO","goals":1,"pj":8,"pc":0},{"name":"Hileman, J Belen","team":"C.A.S.I.","goals":1,"pj":8,"pc":0},{"name":"Kaufman, Nicole","team":"MACABI","goals":1,"pj":8,"pc":0},{"name":"Lopez, Delfina","team":"B. HIPOTECARIO","goals":1,"pj":8,"pc":0},{"name":"Mattiazzi, Juana","team":"M. MORENO","goals":1,"pj":8,"pc":0},{"name":"Muñoz, Candela","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Murgo, Anabella","team":"CIUDAD","goals":1,"pj":8,"pc":0},{"name":"Pazo, Mariana","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Pose, Sofia","team":"C.I.S.S.A.B.","goals":1,"pj":8,"pc":0},{"name":"Rivas, Melisa","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Rofrano, Valentina","team":"PUCARA","goals":1,"pj":8,"pc":0},{"name":"Sapir, Sofía","team":"MACABI","goals":1,"pj":8,"pc":0},{"name":"Spada, Martina","team":"M. GRANDE","goals":1,"pj":8,"pc":0},{"name":"Tandeitnic, Luana","team":"MACABI","goals":1,"pj":8,"pc":0},{"name":"Torreiro, Maria Pilar","team":"LANUS","goals":1,"pj":8,"pc":0},{"name":"Villa, Micaela","team":"PUERTO NIZUC","goals":1,"pj":8,"pc":0},{"name":"Fernandez, Delfina","team":"MACABI","goals":1,"pj":7,"pc":0},{"name":"Fernandez Rubio, Agostina","team":"BANFIELD","goals":1,"pj":7,"pc":0},{"name":"Franco, Adriana Raquel","team":"M. MORENO","goals":1,"pj":7,"pc":0},{"name":"Gallo, Adolfina","team":"U. LA PLATA","goals":1,"pj":7,"pc":0},{"name":"Garcia Larralde, Julieta","team":"M. GRANDE","goals":1,"pj":7,"pc":0},{"name":"Grane, Juana","team":"HINDU CLUB","goals":1,"pj":7,"pc":0},{"name":"Marquez, Catalina","team":"C.I.S.S.A.B.","goals":1,"pj":7,"pc":0},{"name":"Dominguez Velazco, Justina","team":"U. LA PLATA","goals":1,"pj":6,"pc":0},{"name":"Luis, Lourdes Rocio","team":"M. GRANDE","goals":1,"pj":6,"pc":0},{"name":"Rodriguez, Juana","team":"BANFIELD","goals":1,"pj":6,"pc":0},{"name":"Roytman, Ivana","team":"MACABI","goals":1,"pj":6,"pc":0},{"name":"Uranga Imaz, Juana","team":"C.A.S.I.","goals":1,"pj":6,"pc":0},{"name":"Villaverde, Martina","team":"PUERTO NIZUC","goals":1,"pj":6,"pc":0},{"name":"Camporotondo, Delfina","team":"PUERTO NIZUC","goals":1,"pj":5,"pc":0},{"name":"Ruiz, Valentina","team":"LANUS","goals":1,"pj":5,"pc":0},{"name":"Witlis, Morena","team":"MACABI","goals":1,"pj":4,"pc":0}];
 // ─── Supabase (base de datos compartida) ─────────────────────────────────────
 const SUPABASE_URL = "https://utmhpacgzfegtulxrouq.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bWhwYWNnemZlZ3R1bHhyb3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjczMzksImV4cCI6MjA5MjU0MzMzOX0.TrAuORDJO27ZxbpL5BGAzItO0yaf-Fxtvq6ApJ1oyPk";
@@ -69,14 +69,14 @@ const INITIAL_FIXTURE_RAW = [
 ["sáb 25 abr 16:00","PUCARA",2,1,"BANCO CIUDAD"],
 ["sáb 25 abr 16:00","C.A.S.I.",0,0,"U. LA PLATA"],
 ["sáb 25 abr 16:00","LANUS",1,1,"CIUDAD B"]]],
-["Fecha 8",false,[
-["sáb 02 may 16:00","LANUS",0,0,"PUERTO NIZUC"],
-["sáb 02 may 16:00","CIUDAD B",0,0,"C.A.S.I."],
-["sáb 02 may 16:00","U. LA PLATA",0,0,"PUCARA"],
-["sáb 02 may 16:00","BANCO CIUDAD",0,0,"MACABI"],
-["sáb 02 may 16:00","BANFIELD",0,0,"B. HIPOTECARIO"],
-["sáb 02 may 16:00","C.I.S.S.A.B.",0,0,"M. GRANDE"],
-["sáb 02 may 16:00","M. MORENO",0,0,"HINDU CLUB"]]],
+["Fecha 8",true,[
+["sáb 02 may 10:30","LANUS",2,3,"PUERTO NIZUC"],
+["sáb 02 may 10:30","CIUDAD B",0,1,"C.A.S.I."],
+["sáb 02 may 16:00","U. LA PLATA",2,3,"PUCARA"],
+["sáb 02 may 16:00","BANCO CIUDAD",2,2,"MACABI"],
+["sáb 02 may 10:30","BANFIELD",1,0,"B. HIPOTECARIO"],
+["sáb 02 may 10:30","C.I.S.S.A.B.",3,2,"M. GRANDE"],
+["sáb 02 may 16:00","M. MORENO",2,1,"HINDU CLUB"]]],
 ["Fecha 9",false,[
 ["sáb 09 may 16:00","PUERTO NIZUC",0,0,"M. MORENO"],
 ["sáb 09 may 16:00","HINDU CLUB",0,0,"C.I.S.S.A.B."],
@@ -669,6 +669,10 @@ function ScorersView({scorers,setScorers,rivals}) {
   const [editIdx,setEditIdx]=useState(null);
   const [filter,setFilter]=useState("");
   const [teamFilter,setTeamFilter]=useState("");
+  const [importing,setImporting]=useState(false);
+  const [importText,setImportText]=useState("");
+  const [importPreview,setImportPreview]=useState(null);
+  const [importError,setImportError]=useState("");
   const teams=[...new Set(scorers.map(s=>s.team))].sort();
   const filtered=scorers.filter(s=>{
     const matchName=!filter||s.name.toLowerCase().includes(filter.toLowerCase());
@@ -676,17 +680,34 @@ function ScorersView({scorers,setScorers,rivals}) {
     return matchName&&matchTeam;
   });
   const submit=()=>{
-    const entry={...form,goals:+form.goals,pc:+form.pc};
+    const entry={...form,goals:+form.goals,pj:+(form.pj||0),pc:+(form.pc||0)};
     const s=editIdx!==null?scorers.map((x,i)=>i===editIdx?entry:x):[...scorers,entry];
     const sorted=[...s].sort((a,b)=>b.goals-a.goals);
     setScorers(sorted);save(KEYS.scorers,sorted);setEditing(false);
   };
-  const teamOpts=[{value:"",label:"— Club —"},...rivals.map(r=>({value:r.name,label:r.name}))];
+  const doPreview=()=>{
+    setImportError("");
+    try {
+      const parsed=parseScorersPaste(importText);
+      if(parsed.length===0){ setImportError("No se detectaron filas válidas. Revisá el formato."); setImportPreview(null); return; }
+      setImportPreview(parsed);
+    } catch(e){ setImportError("Error al parsear: "+e.message); setImportPreview(null); }
+  };
+  const doImport=()=>{
+    if(!importPreview||importPreview.length===0)return;
+    const sorted=[...importPreview].sort((a,b)=>b.goals-a.goals);
+    setScorers(sorted);save(KEYS.scorers,sorted);
+    setImporting(false);setImportText("");setImportPreview(null);setImportError("");
+  };
+  const closeImport=()=>{setImporting(false);setImportText("");setImportPreview(null);setImportError("");};
   return(
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>TABLA DE GOLEADORAS</h2>
-        {isAdmin && <Btn small onClick={()=>{setForm({name:"",team:"",goals:0,pc:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>}
+        {isAdmin && <div style={{display:"flex",gap:6}}>
+          <Btn small color={C.purple} onClick={()=>{setImporting(true);setImportText("");setImportPreview(null);setImportError("");}}><Icon name="upload" size={14}/> Importar</Btn>
+          <Btn small onClick={()=>{setForm({name:"",team:"",goals:0,pj:0,pc:0});setEditIdx(null);setEditing(true);}}><Icon name="plus" size={14}/> Agregar</Btn>
+        </div>}
       </div>
       {/* Filtros */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
@@ -703,22 +724,24 @@ function ScorersView({scorers,setScorers,rivals}) {
         Mostrando {filtered.length} de {scorers.length} jugadoras · {scorers.reduce((a,s)=>a+s.goals,0)} goles totales
       </div>
       <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-          <thead><tr style={{background:C.purple,color:C.white}}>{(isAdmin?["#","JUGADORA","CLUB","GOLES","PC",""]:["#","JUGADORA","CLUB","GOLES","PC"]).map(h=><th key={h} style={{padding:"10px 8px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700}}>{h}</th>)}</tr></thead>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:520}}>
+          <thead><tr style={{background:C.purple,color:C.white}}>{(isAdmin?["#","JUGADORA","CLUB","GOLES","PJ","PROM",""]:["#","JUGADORA","CLUB","GOLES","PJ","PROM"]).map(h=><th key={h} style={{padding:"10px 6px",textAlign:["JUGADORA","CLUB"].includes(h)?"left":"center",fontFamily:FF,fontWeight:700,fontSize:11,letterSpacing:0.5}}>{h}</th>)}</tr></thead>
           <tbody>
-            {filtered.length===0&&<tr><td colSpan={isAdmin?6:5} style={{textAlign:"center",padding:32,color:C.gray}}>Sin resultados</td></tr>}
+            {filtered.length===0&&<tr><td colSpan={isAdmin?7:6} style={{textAlign:"center",padding:32,color:C.gray}}>Sin resultados</td></tr>}
             {filtered.map((s,i)=>{
               const realRank=scorers.findIndex(x=>x.name===s.name&&x.team===s.team);
+              const prom = s.pj && s.pj>0 ? (s.goals/s.pj).toFixed(2) : "—";
               return(
                 <tr key={i} style={{background:s.team==="U. LA PLATA"?C.accent+"11":i%2===0?C.card:C.card2,borderBottom:`1px solid ${C.border}`}}>
-                  <td style={{textAlign:"center",padding:"10px 8px",fontWeight:700}}>{realRank===0?"🥇":realRank===1?"🥈":realRank===2?"🥉":<span style={{color:C.gray}}>{realRank+1}</span>}</td>
-                  <td style={{padding:"10px 8px",color:s.team==="U. LA PLATA"?C.accent:C.white,fontWeight:s.team==="U. LA PLATA"?700:400}}>{s.team==="U. LA PLATA"&&"🔵 "}{s.name}</td>
-                  <td style={{padding:"10px 8px",color:C.gray}}>{s.team}</td>
-                  <td style={{textAlign:"center",padding:"10px 8px",color:C.accent,fontWeight:700,fontSize:16}}>{s.goals}</td>
-                  <td style={{textAlign:"center",padding:"10px 8px",color:C.red,fontWeight:600}}>{s.pc||"—"}</td>
-                  {isAdmin && <td style={{textAlign:"center"}}>
+                  <td style={{textAlign:"center",padding:"10px 6px",fontWeight:700}}>{realRank===0?"🥇":realRank===1?"🥈":realRank===2?"🥉":<span style={{color:C.gray}}>{realRank+1}</span>}</td>
+                  <td style={{padding:"10px 6px",color:s.team==="U. LA PLATA"?C.accent:C.white,fontWeight:s.team==="U. LA PLATA"?700:400}}>{s.team==="U. LA PLATA"&&"🔵 "}{s.name}</td>
+                  <td style={{padding:"10px 6px",color:C.gray}}>{s.team}</td>
+                  <td style={{textAlign:"center",padding:"10px 6px",color:C.accent,fontWeight:700,fontSize:16}}>{s.goals}</td>
+                  <td style={{textAlign:"center",padding:"10px 6px",color:C.white,fontWeight:600}}>{s.pj||"—"}</td>
+                  <td style={{textAlign:"center",padding:"10px 6px",color:C.green,fontWeight:600}}>{prom}</td>
+                  {isAdmin && <td style={{textAlign:"center",padding:"10px 4px"}}>
                     <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                      <button onClick={()=>{setForm({...s});setEditIdx(scorers.findIndex(x=>x.name===s.name&&x.team===s.team));setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
+                      <button onClick={()=>{setForm({...s,pj:s.pj||0,pc:s.pc||0});setEditIdx(scorers.findIndex(x=>x.name===s.name&&x.team===s.team));setEditing(true);}} style={{background:"none",border:"none",color:C.gray,cursor:"pointer"}}><Icon name="edit" size={13}/></button>
                       <button onClick={()=>{const s2=scorers.filter((_,j)=>j!==realRank);setScorers(s2);save(KEYS.scorers,s2);}} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}}><Icon name="trash" size={13}/></button>
                     </div>
                   </td>}
@@ -745,15 +768,85 @@ function ScorersView({scorers,setScorers,rivals}) {
         <Modal title={editIdx!==null?"Editar goleadora":"Agregar goleadora"} onClose={()=>setEditing(false)}>
           <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
           <Input label="Club (escribir)" value={form.team} onChange={e=>setForm({...form,team:e.target.value})} placeholder="Ej: U. LA PLATA"/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             <Input label="Goles" type="number" min={0} value={form.goals} onChange={e=>setForm({...form,goals:e.target.value})}/>
+            <Input label="PJ" type="number" min={0} value={form.pj} onChange={e=>setForm({...form,pj:e.target.value})}/>
             <Input label="PC" type="number" min={0} value={form.pc} onChange={e=>setForm({...form,pc:e.target.value})}/>
           </div>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><Btn outline onClick={()=>setEditing(false)}>Cancelar</Btn><Btn onClick={submit}><Icon name="save" size={14}/> Guardar</Btn></div>
         </Modal>
       )}
+      {importing&&(
+        <Modal title="Importar tabla de goleadoras" onClose={closeImport} wide>
+          <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:8,padding:12,marginBottom:12,fontSize:12,color:C.gray,lineHeight:1.5}}>
+            <p style={{margin:"0 0 6px",color:C.white,fontWeight:700,fontSize:12,letterSpacing:0.5}}>FORMATO ACEPTADO</p>
+            Pegá la tabla copiada de la AHC (o cualquier tabla con: <b style={{color:C.white}}>Pos · Nombre · Club · Goles · PJ · Prom</b>).<br/>
+            Funciona tanto si está <b style={{color:C.white}}>una columna por línea</b> (formato vertical) como <b style={{color:C.white}}>tab/espacios</b> (una fila por línea).<br/>
+            <span style={{color:C.red}}>⚠ Esto reemplaza toda la tabla actual.</span>
+          </div>
+          <Textarea label="Pegar acá" value={importText} onChange={e=>{setImportText(e.target.value);setImportPreview(null);setImportError("");}} placeholder={"1\nCarnevali, Oriana\nU. LA PLATA\n5\n8\n0.63\n2\n..."} style={{...inp,minHeight:160,fontFamily:"monospace",fontSize:12}}/>
+          {importError&&<div style={{background:C.red+"22",border:`1px solid ${C.red}`,color:C.red,borderRadius:8,padding:10,fontSize:13,marginBottom:10}}>{importError}</div>}
+          {importPreview&&(
+            <div style={{background:C.green+"11",border:`1px solid ${C.green}44`,borderRadius:8,padding:12,marginBottom:12}}>
+              <p style={{margin:"0 0 8px",color:C.green,fontWeight:700,fontSize:12,letterSpacing:0.5}}>✓ {importPreview.length} JUGADORAS DETECTADAS</p>
+              <div style={{maxHeight:180,overflowY:"auto",fontSize:12,color:C.white}}>
+                {importPreview.slice(0,8).map((s,i)=><div key={i} style={{padding:"4px 0",borderBottom:i<7?`1px solid ${C.border}`:"none"}}>{i+1}. <b>{s.name}</b> ({s.team}) — {s.goals}g · {s.pj}pj</div>)}
+                {importPreview.length>8&&<div style={{padding:"6px 0 0",color:C.gray,fontStyle:"italic"}}>...y {importPreview.length-8} más</div>}
+              </div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+            <Btn outline onClick={closeImport}>Cancelar</Btn>
+            {!importPreview&&<Btn color={C.purple} onClick={doPreview} disabled={!importText.trim()}><Icon name="eye" size={14}/> Previsualizar</Btn>}
+            {importPreview&&<Btn color={C.green} onClick={doImport}><Icon name="save" size={14}/> Reemplazar tabla ({importPreview.length})</Btn>}
+          </div>
+        </Modal>
+      )}
     </div>
   );
+}
+// ─── Parser de tablas pegadas (importador de goleadoras) ─────────────────
+function parseScorersPaste(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length===0) return [];
+  const isInt = s => /^\d+$/.test(s);
+  const isFloat = s => /^\d+([.,]\d+)?$/.test(s);
+  const result = [];
+  // Estrategia 1: una columna por línea (6 líneas = un registro: pos, nombre, club, goles, pj, prom)
+  // También aceptamos sin promedio (5 líneas) o sin posición (5/4 líneas).
+  // Primero probamos chunks de 6.
+  const tryChunks = (size, hasPos, hasProm) => {
+    if(lines.length % size !== 0) return null;
+    const out = [];
+    for(let i=0;i<lines.length;i+=size){
+      const chunk = lines.slice(i,i+size);
+      let idx = 0;
+      if(hasPos){ if(!isInt(chunk[idx])) return null; idx++; }
+      const name = chunk[idx++]; const team = chunk[idx++];
+      const goals = chunk[idx++]; const pj = chunk[idx++];
+      if(!name||!team||!isInt(goals)||!isInt(pj)) return null;
+      if(hasProm){ if(!isFloat(chunk[idx])) return null; }
+      out.push({name:name.trim(),team:team.trim(),goals:+goals,pj:+pj,pc:0});
+    }
+    return out;
+  };
+  const variants = [[6,true,true],[5,true,false],[5,false,true],[4,false,false]];
+  for(const [s,p,pr] of variants){
+    const r = tryChunks(s,p,pr);
+    if(r && r.length>0) return r;
+  }
+  // Estrategia 2: una fila por línea, separada por tabs o múltiples espacios
+  for(const line of lines){
+    const cols = line.split(/\t+|\s{2,}/).map(c=>c.trim()).filter(Boolean);
+    if(cols.length<3) continue;
+    let i=0;
+    if(isInt(cols[0]) && cols.length>=4) i=1; // saltar posición
+    const name = cols[i++]; const team = cols[i++];
+    const goals = cols[i++]; const pj = cols[i] || "0";
+    if(!name||!team||!isInt(goals)) continue;
+    result.push({name,team,goals:+goals,pj:isInt(pj)?+pj:0,pc:0});
+  }
+  return result;
 }
 // ═══════════════════════════════════════════════════════════════════════════════
 // FIXTURE — Sync helpers + parser + view + match editor
@@ -1965,8 +2058,8 @@ export default function App() {
       goleadoras.forEach(g=>{
         if(!g.nombre)return;
         const idx=updated.findIndex(s=>s.name.toLowerCase()===g.nombre.toLowerCase());
-        if(idx>=0){updated[idx]={...updated[idx],goals:updated[idx].goals+1,pc:updated[idx].pc+(g.tipo==="pc"?1:0)};}
-        else{updated.push({name:g.nombre,team:rivalTeam||"",goals:1,pc:g.tipo==="pc"?1:0});}
+        if(idx>=0){updated[idx]={...updated[idx],goals:updated[idx].goals+1,pj:updated[idx].pj||0,pc:(updated[idx].pc||0)+(g.tipo==="pc"?1:0)};}
+        else{updated.push({name:g.nombre,team:rivalTeam||"",goals:1,pj:0,pc:g.tipo==="pc"?1:0});}
       });
       const sorted=[...updated].sort((a,b)=>b.goals-a.goals);save(KEYS.scorers,sorted);return sorted;
     });
