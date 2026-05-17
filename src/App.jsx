@@ -314,6 +314,30 @@ function getH2H(fixture, teamA, teamB) {
   }
   return results;
 }
+// ─── Videos: categorías y conversión URL → embed ────────────────────────────
+const VIDEO_CATEGORIES = ["Fase ofensiva","Fase defensiva","Presiones","Salidas","CC Ofensivos","CC defensivo","Tendencias"];
+function videoEmbedInfo(rawUrl) {
+  const url = (rawUrl||"").trim();
+  if (!url) return null;
+  // YouTube: youtu.be/ID  ·  youtube.com/watch?v=ID  ·  youtube.com/shorts/ID  ·  /embed/ID
+  const ytShort = url.match(/youtu\.be\/([\w-]{6,})/i);
+  const ytWatch = url.match(/[?&]v=([\w-]{6,})/i);
+  const ytShorts = url.match(/youtube\.com\/shorts\/([\w-]{6,})/i);
+  const ytEmbed = url.match(/youtube\.com\/embed\/([\w-]{6,})/i);
+  const ytId = ytShort?.[1] || ytWatch?.[1] || ytShorts?.[1] || ytEmbed?.[1];
+  if (ytId) return { kind:"youtube", embed:`https://www.youtube.com/embed/${ytId}`, watch:`https://www.youtube.com/watch?v=${ytId}` };
+  // Google Drive: /file/d/ID/ · ?id=ID · /open?id=ID
+  const drvPath = url.match(/drive\.google\.com\/file\/d\/([\w-]{10,})/i);
+  const drvQuery = url.match(/[?&]id=([\w-]{10,})/i);
+  const drvId = drvPath?.[1] || drvQuery?.[1];
+  if (drvId) return { kind:"drive", embed:`https://drive.google.com/file/d/${drvId}/preview`, watch:`https://drive.google.com/file/d/${drvId}/view` };
+  // Vimeo opcional: vimeo.com/ID
+  const vim = url.match(/vimeo\.com\/(\d{6,})/i);
+  if (vim) return { kind:"vimeo", embed:`https://player.vimeo.com/video/${vim[1]}`, watch:`https://vimeo.com/${vim[1]}` };
+  // Fallback: usar la URL tal cual (puede no funcionar como iframe si el sitio lo bloquea)
+  return { kind:"other", embed:url, watch:url };
+}
+
 // ─── Persistencia híbrida: localStorage (instantáneo) + Supabase (sync remoto) ─
 const _saveStatusListeners = new Set();
 function emitSaveStatus(status) { _saveStatusListeners.forEach(fn => { try { fn(status); } catch {} }); }
@@ -371,6 +395,85 @@ async function save(key, val) {
     return false;
   }
 }
+// ─── Supabase Auth (Google OAuth via REST, sin SDK) ─────────────────────────
+const AUTH_STORAGE_KEY = "culp:supabaseAuth";
+function _getAuth() { try { const v = localStorage.getItem(AUTH_STORAGE_KEY); return v ? JSON.parse(v) : null; } catch { return null; } }
+function _setAuth(a) { try { a ? localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(a)) : localStorage.removeItem(AUTH_STORAGE_KEY); } catch {} }
+function _userIdFromToken(token) { try { return JSON.parse(atob(token.split(".")[1])).sub; } catch { return null; } }
+
+function loginWithGoogle() {
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirect}`;
+}
+async function logoutSupabase() {
+  const auth = _getAuth();
+  if (auth?.access_token) {
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${auth.access_token}` }
+      });
+    } catch {}
+  }
+  _setAuth(null);
+}
+async function refreshSupabaseToken(refresh_token) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+async function fetchSupabaseProfile(accessToken, userId) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch { return null; }
+}
+async function getValidAccessToken() {
+  // Devuelve un access_token válido (refresca si está por vencer) o null si no hay sesión
+  let auth = _getAuth();
+  if (!auth?.access_token) return null;
+  const now = Date.now();
+  if (auth.expires_at && auth.expires_at < now + 60_000) {
+    const fresh = await refreshSupabaseToken(auth.refresh_token);
+    if (!fresh?.access_token) { _setAuth(null); return null; }
+    auth = {
+      access_token: fresh.access_token,
+      refresh_token: fresh.refresh_token,
+      expires_at: now + (fresh.expires_in||3600)*1000,
+      user: fresh.user
+    };
+    _setAuth(auth);
+  }
+  return auth.access_token;
+}
+// Captura el hash de OAuth (#access_token=...) si volvemos de Google y limpia la URL
+function consumeOAuthRedirect() {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash || "";
+  if (!hash.includes("access_token=")) return false;
+  const params = new URLSearchParams(hash.replace(/^#/, ""));
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+  const expires_in = parseInt(params.get("expires_in") || "3600");
+  if (!access_token) return false;
+  _setAuth({
+    access_token, refresh_token,
+    expires_at: Date.now() + expires_in*1000
+  });
+  try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+  return true;
+}
+
 // ─── Claude API (acepta imágenes Y PDFs) ─────────────────────────────────────
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 async function scanPlanilla(base64, mediaType, isPdf) {
@@ -1536,6 +1639,8 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
   const [tab,setTab]=useState("perfil");
   const [analysis,setAnalysis]=useState(rival?{...emptyA,...rival.analysis}:emptyA);
   const [matches,setMatches]=useState(rival?.matches||[]);
+  const [videos,setVideos]=useState(rival?.videos||[]);
+  const [newVideo,setNewVideo]=useState({title:"",category:VIDEO_CATEGORIES[0],url:""});
   const [showScan,setShowScan]=useState(false);
   const [toast,setToast]=useState(null);
   const [newMatch,setNewMatch]=useState({date:"",goalsFor:0,goalsAgainst:0,pcFor:0,pcAgainst:0,notes:""});
@@ -1554,7 +1659,7 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
     setToast(`✅ Partido cargado: CULP ${gf??0}—${gc??0} · ${data.goleadoras?.length||0} goles · ${data.tarjetas?.length||0} tarjetas`);
     setTimeout(()=>setToast(null),5000);
   }
-  const tabs=[{id:"perfil",label:"Perfil",icon:"shield"},{id:"conpelota",label:"Con pelota",icon:"target"},{id:"sinpelota",label:"Sin pelota",icon:"flag"},{id:"corners",label:"Corners",icon:"corner"},{id:"partidos",label:`Partidos (${matches.length})`,icon:"chart"},{id:"conclusion",label:"Conclusión",icon:"star"}];
+  const tabs=[{id:"perfil",label:"Perfil",icon:"shield"},{id:"conpelota",label:"Con pelota",icon:"target"},{id:"sinpelota",label:"Sin pelota",icon:"flag"},{id:"corners",label:"Corners",icon:"corner"},{id:"partidos",label:`Partidos (${matches.length})`,icon:"chart"},{id:"videos",label:`Videos (${videos.length})`,icon:"image"},{id:"conclusion",label:"Conclusión",icon:"star"}];
   const tabBtn=id=>({padding:"7px 11px",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:FF,letterSpacing:0.5,background:tab===id?C.accent:"transparent",color:tab===id?C.bg:C.gray,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"});
   return(
     <div style={{maxWidth:720,margin:"0 auto"}}>
@@ -1734,6 +1839,64 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
             )}
           </div>
         )}
+        {tab==="videos"&&(
+          <div>
+            <div style={{background:C.card2,border:`1px solid ${C.accent}44`,borderRadius:10,padding:14,marginBottom:14}}>
+              <p style={{color:C.accent,fontSize:11,margin:"0 0 10px",fontWeight:700,letterSpacing:0.8}}>AGREGAR VIDEO</p>
+              <p style={{color:C.gray,fontSize:11,margin:"0 0 12px"}}>Pegá el link de <span style={{color:C.accent}}>Google Drive</span> (compartido como "Cualquiera con el link puede ver") o de <span style={{color:C.red}}>YouTube</span>. Se convierte automáticamente al formato embebido.</p>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8,marginBottom:8}}>
+                <Input label="Título" value={newVideo.title} onChange={e=>setNewVideo(v=>({...v,title:e.target.value}))} placeholder="Ej: CC ofensivo lateral derecho"/>
+                <Select label="Categoría" value={newVideo.category} onChange={e=>setNewVideo(v=>({...v,category:e.target.value}))} options={VIDEO_CATEGORIES}/>
+              </div>
+              <Input label="URL" value={newVideo.url} onChange={e=>setNewVideo(v=>({...v,url:e.target.value}))} placeholder="https://drive.google.com/file/d/... o https://youtu.be/..."/>
+              {newVideo.url && (() => {
+                const info = videoEmbedInfo(newVideo.url);
+                if (!info) return null;
+                const kindColor = info.kind==="youtube"?C.red:info.kind==="drive"?C.gold:info.kind==="vimeo"?C.purple:C.gray;
+                const kindLabel = {youtube:"YouTube",drive:"Drive",vimeo:"Vimeo",other:"Link directo"}[info.kind];
+                return <div style={{margin:"4px 0 10px"}}><Badge text={kindLabel} color={kindColor}/></div>;
+              })()}
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <Btn small color={C.green} onClick={()=>{
+                  if(!newVideo.title.trim()||!newVideo.url.trim()){setToast("⚠️ Faltan título o URL");setTimeout(()=>setToast(null),3000);return;}
+                  const info = videoEmbedInfo(newVideo.url);
+                  if(!info){setToast("⚠️ URL no reconocida");setTimeout(()=>setToast(null),3000);return;}
+                  setVideos(vs=>[...vs,{id:Date.now()+Math.random(),title:newVideo.title.trim(),category:newVideo.category,url:newVideo.url.trim(),kind:info.kind,addedAt:new Date().toISOString()}]);
+                  setNewVideo({title:"",category:newVideo.category,url:""});
+                }}><Icon name="plus" size={12}/> Agregar</Btn>
+              </div>
+            </div>
+            {videos.length===0 ? (
+              <div style={{textAlign:"center",padding:"32px 20px",color:C.gray,fontSize:13}}>
+                <Icon name="image" size={36} color={C.border}/>
+                <p style={{margin:"10px 0 0"}}>Sin videos cargados</p>
+              </div>
+            ) : (
+              VIDEO_CATEGORIES.map(cat => {
+                const list = videos.filter(v=>v.category===cat);
+                if(list.length===0) return null;
+                return (
+                  <div key={cat} style={{marginBottom:14}}>
+                    <p style={{color:C.accent,fontSize:11,margin:"0 0 6px",fontWeight:700,letterSpacing:0.8}}>{cat.toUpperCase()} <span style={{color:C.gray,fontWeight:400}}>· {list.length}</span></p>
+                    {list.map(v => {
+                      const info = videoEmbedInfo(v.url);
+                      const kindColor = info?.kind==="youtube"?C.red:info?.kind==="drive"?C.gold:info?.kind==="vimeo"?C.purple:C.gray;
+                      const kindLabel = info?{youtube:"YT",drive:"Drive",vimeo:"Vimeo",other:"Link"}[info.kind]:"?";
+                      return (
+                        <div key={v.id} style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+                          <Badge text={kindLabel} color={kindColor}/>
+                          <span style={{color:C.white,fontSize:13,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.title}</span>
+                          <a href={info?.watch||v.url} target="_blank" rel="noreferrer" style={{color:C.gray,fontSize:11,textDecoration:"none"}}>abrir ↗</a>
+                          <button onClick={()=>setVideos(vs=>vs.filter(x=>x.id!==v.id))} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}} title="Eliminar"><Icon name="trash" size={14}/></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
         {tab==="conclusion"&&(
           <div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
@@ -1754,7 +1917,7 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
         <Btn outline onClick={onCancel}>Cancelar</Btn>
-        <Btn color={C.green} onClick={()=>onSave({id:rival?.id||Date.now(),name,date,round,analysis,matches,updatedAt:new Date().toISOString()})}>
+        <Btn color={C.green} onClick={()=>onSave({id:rival?.id||Date.now(),name,date,round,analysis,matches,videos,updatedAt:new Date().toISOString()})}>
           <Icon name="save" size={14}/> Guardar análisis
         </Btn>
       </div>
@@ -1762,6 +1925,57 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
     </div>
   );
 }
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIDEOS SECTION (dentro de RivalDetail)
+// ═══════════════════════════════════════════════════════════════════════════════
+function VideosSection({videos}) {
+  const [activeCat, setActiveCat] = useState("__all__");
+  const [playing, setPlaying] = useState(null); // {video, info}
+  if (!videos || videos.length === 0) return null;
+  const cats = VIDEO_CATEGORIES.filter(c => videos.some(v => v.category === c));
+  const filtered = activeCat === "__all__" ? videos : videos.filter(v => v.category === activeCat);
+  return (
+    <SCard title={`Videos · ${videos.length}`} icon="image" color={C.purple}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+        <button onClick={()=>setActiveCat("__all__")} style={{padding:"5px 10px",borderRadius:14,border:"none",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5,background:activeCat==="__all__"?C.purple:C.card2,color:activeCat==="__all__"?C.white:C.gray}}>TODO · {videos.length}</button>
+        {cats.map(c => {
+          const n = videos.filter(v=>v.category===c).length;
+          const active = activeCat===c;
+          return <button key={c} onClick={()=>setActiveCat(c)} style={{padding:"5px 10px",borderRadius:14,border:"none",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5,background:active?C.purple:C.card2,color:active?C.white:C.gray}}>{c.toUpperCase()} · {n}</button>;
+        })}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))",gap:10}}>
+        {filtered.map(v => {
+          const info = videoEmbedInfo(v.url);
+          const kindColor = info?.kind==="youtube"?C.red:info?.kind==="drive"?C.gold:info?.kind==="vimeo"?C.purple:C.gray;
+          const kindLabel = info?{youtube:"YouTube",drive:"Drive",vimeo:"Vimeo",other:"Link"}[info.kind]:"?";
+          return (
+            <button key={v.id} onClick={()=>setPlaying({video:v, info})} style={{textAlign:"left",cursor:"pointer",background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:10,display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{aspectRatio:"16/9",background:"#000",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:28,opacity:0.8}}>▶</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <Badge text={kindLabel} color={kindColor}/>
+                <span style={{color:C.gray,fontSize:10,letterSpacing:0.5}}>{v.category}</span>
+              </div>
+              <span style={{color:C.white,fontSize:13,fontWeight:600,lineHeight:1.3}}>{v.title}</span>
+            </button>
+          );
+        })}
+      </div>
+      {playing && (
+        <Modal title={playing.video.title} onClose={()=>setPlaying(null)} wide>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <Badge text={playing.video.category} color={C.purple}/>
+            <a href={playing.info?.watch||playing.video.url} target="_blank" rel="noreferrer" style={{marginLeft:"auto",color:C.gray,fontSize:11,textDecoration:"none"}}>abrir en nueva pestaña ↗</a>
+          </div>
+          <div style={{position:"relative",width:"100%",paddingTop:"56.25%",background:"#000",borderRadius:8,overflow:"hidden"}}>
+            <iframe src={playing.info?.embed||playing.video.url} title={playing.video.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen frameBorder="0" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:0}}/>
+          </div>
+        </Modal>
+      )}
+    </SCard>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIVAL DETAIL
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1856,6 +2070,8 @@ function RivalDetail({rival,onEdit,onBack}) {
           {a.weaknesses&&<SCard title="⚠️ Para explotar" color={C.green}><p style={{color:"#ddd",fontSize:13,margin:0,whiteSpace:"pre-wrap",lineHeight:1.55}}>{a.weaknesses}</p></SCard>}
         </div>
       )}
+
+      <VideosSection videos={rival.videos}/>
 
       {(has("city","colors","coach","assistant","physio")||has("goalkeeper","captain","keyPlayers","injuries"))&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>
@@ -2323,9 +2539,10 @@ function Dashboard({rivals,standings,scorers,fixture,cards,setView}) {
 // LOGIN MODAL
 // ═══════════════════════════════════════════════════════════════════════════════
 function LoginModal({onClose, onSuccess}) {
+  const [showPwd, setShowPwd] = useState(false);
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState("");
-  function submit() {
+  function submitPwd() {
     if (pwd === ADMIN_PASSWORD) {
       try { localStorage.setItem(ADMIN_AUTH_KEY, "1"); } catch {}
       onSuccess();
@@ -2335,24 +2552,37 @@ function LoginModal({onClose, onSuccess}) {
     }
   }
   return (
-    <Modal title="Modo Staff" onClose={onClose}>
+    <Modal title="Ingresar" onClose={onClose}>
       <p style={{color:C.gray,fontSize:12,marginBottom:14,lineHeight:1.5}}>
-        Ingresá la contraseña para habilitar la edición de fixture, rivales, tabla, goleadoras y tarjetas.
+        Ingresá con tu cuenta de Google para ver los análisis. La sesión queda guardada en este dispositivo.
       </p>
-      <Input
-        label="Contraseña"
-        type="password"
-        value={pwd}
-        onChange={e=>{setPwd(e.target.value); setErr("");}}
-        onKeyDown={e=>{if(e.key==="Enter") submit();}}
-        autoFocus
-        placeholder="••••••••"
-      />
-      {err && <p style={{color:C.red,fontSize:11,marginTop:-6,marginBottom:10}}>{err}</p>}
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
-        <Btn outline onClick={onClose}>Cancelar</Btn>
-        <Btn color={C.green} onClick={submit} disabled={!pwd}><Icon name="check" size={14}/> Ingresar</Btn>
-      </div>
+      <button onClick={loginWithGoogle} style={{width:"100%",background:C.white,color:"#1a1a1a",border:"none",borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontSize:14,fontWeight:600,fontFamily:"'Barlow',sans-serif",marginBottom:12}}>
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16.1 19 13 24 13c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.6 5.1C9.5 39.6 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.2 5.2C40.9 35.4 44 30.1 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>
+        Iniciar sesión con Google
+      </button>
+      {!showPwd ? (
+        <button onClick={()=>setShowPwd(true)} style={{background:"none",border:"none",color:C.gray,fontSize:11,cursor:"pointer",textDecoration:"underline",display:"block",margin:"4px auto 0"}}>
+          Soy staff sin Google · usar contraseña
+        </button>
+      ) : (
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:14,marginTop:8}}>
+          <p style={{color:C.gray,fontSize:11,marginBottom:10}}>Acceso de staff por contraseña (fallback).</p>
+          <Input
+            label="Contraseña"
+            type="password"
+            value={pwd}
+            onChange={e=>{setPwd(e.target.value); setErr("");}}
+            onKeyDown={e=>{if(e.key==="Enter") submitPwd();}}
+            autoFocus
+            placeholder="••••••••"
+          />
+          {err && <p style={{color:C.red,fontSize:11,marginTop:-6,marginBottom:10}}>{err}</p>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+            <Btn outline onClick={()=>{setShowPwd(false);setPwd("");setErr("");}}>Volver</Btn>
+            <Btn color={C.green} onClick={submitPwd} disabled={!pwd}><Icon name="check" size={14}/> Ingresar</Btn>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -2455,15 +2685,50 @@ export default function App() {
   const [view,setView]=useState("home");
   const [subview,setSubview]=useState(null);
   const [selected,setSelected]=useState(null);
-  const [isAdmin,setIsAdmin]=useState(false);
+  const [passwordAdmin,setPasswordAdmin]=useState(false);
+  const [googleUser,setGoogleUser]=useState(null); // {id, email, name, avatar, rol}
+  const isAdmin = passwordAdmin || googleUser?.rol === "staff";
   const [showLogin,setShowLogin]=useState(false);
   useEffect(()=>{
-    try { if(localStorage.getItem(ADMIN_AUTH_KEY)==="1") setIsAdmin(true); } catch {}
+    try { if(localStorage.getItem(ADMIN_AUTH_KEY)==="1") setPasswordAdmin(true); } catch {}
   },[]);
-  function logout(){
-    if(!confirm("¿Cerrar sesión de staff?")) return;
-    try { localStorage.removeItem(ADMIN_AUTH_KEY); } catch {}
-    setIsAdmin(false);
+  // Auth Google: detectar callback, refrescar token y traer perfil
+  useEffect(()=>{
+    let cancelled = false;
+    (async () => {
+      consumeOAuthRedirect(); // si volvemos de Google, guarda los tokens
+      const token = await getValidAccessToken();
+      if (!token) return;
+      const uid = _userIdFromToken(token);
+      if (!uid) return;
+      const profile = await fetchSupabaseProfile(token, uid);
+      if (cancelled) return;
+      if (profile) {
+        setGoogleUser({
+          id: uid,
+          email: profile.email,
+          name: profile.full_name || profile.email,
+          avatar: profile.avatar_url,
+          rol: profile.rol || "jugadora"
+        });
+      } else {
+        // El perfil aún no existe (el trigger handle_new_user tarda un instante). Reintento corto.
+        setTimeout(async () => {
+          const p2 = await fetchSupabaseProfile(token, uid);
+          if (!cancelled && p2) {
+            setGoogleUser({ id: uid, email: p2.email, name: p2.full_name||p2.email, avatar: p2.avatar_url, rol: p2.rol||"jugadora" });
+          }
+        }, 1500);
+      }
+    })();
+    // Refresh proactivo cada 30 min
+    const refreshInterval = setInterval(()=>{ getValidAccessToken().catch(()=>{}); }, 30*60*1000);
+    return ()=>{ cancelled = true; clearInterval(refreshInterval); };
+  },[]);
+  async function logout(){
+    if(!confirm(googleUser ? "¿Cerrar sesión?" : "¿Cerrar sesión de staff?")) return;
+    if (passwordAdmin) { try { localStorage.removeItem(ADMIN_AUTH_KEY); } catch {} setPasswordAdmin(false); }
+    if (googleUser)    { await logoutSupabase(); setGoogleUser(null); }
     if(subview==="new"||subview==="edit"){ setSubview(null); setSelected(null); }
   }
   useEffect(()=>{
@@ -2543,15 +2808,35 @@ export default function App() {
           <div style={{width:30,height:30,background:C.accent+"22",border:`2px solid ${C.accent}`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>🏑</div>
           <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
           <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
-            <Badge text={`${scorers.length} goleadoras`} color={C.purple}/>
-            <button
-              onClick={()=> isAdmin ? logout() : setShowLogin(true)}
-              title={isAdmin ? "Cerrar sesión staff" : "Modo staff"}
-              style={{background:isAdmin?C.green+"22":"none",border:`1px solid ${isAdmin?C.green+"66":C.border}`,borderRadius:8,padding:"5px 8px",cursor:"pointer",color:isAdmin?C.green:C.gray,display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
-            >
-              <Icon name={isAdmin?"check":"shield"} size={12}/>
-              {isAdmin?"STAFF":"VER"}
-            </button>
+            {googleUser ? (
+              <button
+                onClick={logout}
+                title={`${googleUser.email} · ${isAdmin?"Staff":"Jugadora"} · click para cerrar sesión`}
+                style={{background:isAdmin?C.green+"22":C.card2,border:`1px solid ${isAdmin?C.green+"66":C.border}`,borderRadius:20,padding:"3px 10px 3px 3px",cursor:"pointer",color:C.white,display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600}}
+              >
+                {googleUser.avatar
+                  ? <img src={googleUser.avatar} alt="" style={{width:24,height:24,borderRadius:"50%",objectFit:"cover"}} referrerPolicy="no-referrer"/>
+                  : <div style={{width:24,height:24,borderRadius:"50%",background:C.accent+"33",border:`1px solid ${C.accent}66`,display:"flex",alignItems:"center",justifyContent:"center",color:C.accent,fontSize:11,fontWeight:700}}>{(googleUser.name||googleUser.email||"?").slice(0,1).toUpperCase()}</div>}
+                <span style={{maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(googleUser.name||googleUser.email).split(" ")[0]}</span>
+                {isAdmin && <Icon name="check" size={11} color={C.green}/>}
+              </button>
+            ) : passwordAdmin ? (
+              <button
+                onClick={logout}
+                title="Staff por contraseña · cerrar sesión"
+                style={{background:C.green+"22",border:`1px solid ${C.green}66`,borderRadius:8,padding:"5px 8px",cursor:"pointer",color:C.green,display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
+              >
+                <Icon name="check" size={12}/> STAFF
+              </button>
+            ) : (
+              <button
+                onClick={()=>setShowLogin(true)}
+                title="Iniciar sesión"
+                style={{background:C.accent+"22",border:`1px solid ${C.accent}66`,borderRadius:8,padding:"5px 10px",cursor:"pointer",color:C.accent,display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
+              >
+                <Icon name="shield" size={12}/> INGRESAR
+              </button>
+            )}
           </div>
         </div>
         {/* Content */}
@@ -2571,7 +2856,7 @@ export default function App() {
           {nav.map(n=><button key={n.id} style={navBtn(n.id)} onClick={()=>{setView(n.id);setSubview(null);setSelected(null);}}><Icon name={n.icon} size={18}/>{n.label.toUpperCase()}</button>)}
         </div>
       </div>
-      {showLogin && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>{setIsAdmin(true);setShowLogin(false);}}/>}
+      {showLogin && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>{setPasswordAdmin(true);setShowLogin(false);}}/>}
     </AdminContext.Provider>
   );
 }
