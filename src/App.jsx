@@ -77,22 +77,22 @@ const INITIAL_FIXTURE_RAW = [
 ["sáb 02 may 10:30","BANFIELD",1,0,"B. HIPOTECARIO"],
 ["sáb 02 may 10:30","C.I.S.S.A.B.",3,2,"M. GRANDE"],
 ["sáb 02 may 16:00","M. MORENO",2,1,"HINDU CLUB"]]],
-["Fecha 9",false,[
-["sáb 09 may 16:00","PUERTO NIZUC",0,0,"M. MORENO"],
-["sáb 09 may 16:00","HINDU CLUB",0,0,"C.I.S.S.A.B."],
-["sáb 09 may 16:00","M. GRANDE",0,0,"BANFIELD"],
-["sáb 09 may 16:00","B. HIPOTECARIO",0,0,"BANCO CIUDAD"],
-["sáb 09 may 16:00","MACABI",0,0,"U. LA PLATA"],
-["sáb 09 may 16:00","PUCARA",0,0,"CIUDAD B"],
-["sáb 09 may 16:00","C.A.S.I.",0,0,"LANUS"]]],
-["Fecha 10",false,[
-["sáb 16 may 16:00","C.A.S.I.",0,0,"PUERTO NIZUC"],
-["sáb 16 may 16:00","LANUS",0,0,"PUCARA"],
-["sáb 16 may 16:00","CIUDAD B",0,0,"MACABI"],
-["sáb 16 may 16:00","U. LA PLATA",0,0,"B. HIPOTECARIO"],
-["sáb 16 may 16:00","BANCO CIUDAD",0,0,"M. GRANDE"],
-["sáb 16 may 16:00","BANFIELD",0,0,"HINDU CLUB"],
-["sáb 16 may 16:00","C.I.S.S.A.B.",0,0,"M. MORENO"]]],
+["Fecha 9",true,[
+["sáb 09 may 16:00","PUERTO NIZUC",1,0,"M. MORENO"],
+["sáb 09 may 16:00","HINDU CLUB",1,2,"C.I.S.S.A.B."],
+["sáb 09 may 16:00","M. GRANDE",3,2,"BANFIELD"],
+["sáb 09 may 16:00","B. HIPOTECARIO",3,2,"BANCO CIUDAD"],
+["sáb 09 may 16:00","MACABI",1,1,"U. LA PLATA"],
+["sáb 09 may 16:00","PUCARA",2,2,"CIUDAD B"],
+["sáb 09 may 16:00","C.A.S.I.",1,1,"LANUS"]]],
+["Fecha 10",true,[
+["sáb 16 may 16:00","C.A.S.I.",2,1,"PUERTO NIZUC"],
+["sáb 16 may 10:30","LANUS",1,4,"PUCARA"],
+["sáb 16 may 16:00","CIUDAD B",0,2,"MACABI"],
+["sáb 16 may 16:00","U. LA PLATA",3,1,"B. HIPOTECARIO"],
+["sáb 16 may 16:00","BANCO CIUDAD",2,1,"M. GRANDE"],
+["sáb 16 may 16:00","BANFIELD",1,2,"HINDU CLUB"],
+["sáb 16 may 16:00","C.I.S.S.A.B.",2,2,"M. MORENO"]]],
 ["Fecha 11",false,[
 ["sáb 30 may 16:00","PUERTO NIZUC",0,0,"C.I.S.S.A.B."],
 ["sáb 30 may 16:00","M. MORENO",0,0,"BANFIELD"],
@@ -206,13 +206,13 @@ const INITIAL_FIXTURE_RAW = [
 ["sáb 03 oct 16:00","LANUS",0,0,"MACABI"],
 ["sáb 03 oct 16:00","C.A.S.I.",0,0,"PUCARA"]]],
 ["Fecha 25",false,[
-["sáb 17 oct 16:00","PUERTO NIZUC",0,0,"PUCARA"],
-["sáb 17 oct 16:00","MACABI",0,0,"C.A.S.I."],
-["sáb 17 oct 16:00","B. HIPOTECARIO",0,0,"LANUS"],
-["sáb 17 oct 16:00","M. GRANDE",0,0,"CIUDAD B"],
-["sáb 17 oct 16:00","HINDU CLUB",0,0,"U. LA PLATA"],
-["sáb 17 oct 16:00","M. MORENO",0,0,"BANCO CIUDAD"],
-["sáb 17 oct 16:00","C.I.S.S.A.B.",0,0,"BANFIELD"]]],
+["sáb 10 oct 16:00","PUERTO NIZUC",0,0,"PUCARA"],
+["sáb 10 oct 16:00","MACABI",0,0,"C.A.S.I."],
+["sáb 10 oct 16:00","B. HIPOTECARIO",0,0,"LANUS"],
+["sáb 10 oct 16:00","M. GRANDE",0,0,"CIUDAD B"],
+["sáb 10 oct 16:00","HINDU CLUB",0,0,"U. LA PLATA"],
+["sáb 10 oct 16:00","M. MORENO",0,0,"BANCO CIUDAD"],
+["sáb 10 oct 16:00","C.I.S.S.A.B.",0,0,"BANFIELD"]]],
 ["Fecha 26",false,[
 ["sáb 31 oct 16:00","BANFIELD",0,0,"PUERTO NIZUC"],
 ["sáb 31 oct 16:00","BANCO CIUDAD",0,0,"C.I.S.S.A.B."],
@@ -314,19 +314,38 @@ function getH2H(fixture, teamA, teamB) {
   }
   return results;
 }
+// ─── Persistencia híbrida: localStorage (instantáneo) + Supabase (sync remoto) ─
+const _saveStatusListeners = new Set();
+function emitSaveStatus(status) { _saveStatusListeners.forEach(fn => { try { fn(status); } catch {} }); }
+function subscribeSaveStatus(fn) { _saveStatusListeners.add(fn); return () => _saveStatusListeners.delete(fn); }
+function lsGet(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+let _pendingSaves = 0;
 async function load(key) {
+  // 1) Intentar Supabase
   try {
     const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data?key=eq." + encodeURIComponent(key) + "&select=value", {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     });
-    const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) return JSON.parse(data[0].value);
-    return null;
-  } catch { return null; }
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const parsed = JSON.parse(data[0].value);
+        lsSet(key, parsed); // refrescar cache local con lo remoto
+        return parsed;
+      }
+    }
+  } catch {}
+  // 2) Fallback a localStorage (último estado conocido en este dispositivo)
+  return lsGet(key);
 }
 async function save(key, val) {
+  // Persistencia instantánea local (no puede fallar) → los datos sobreviven aunque Supabase falle
+  lsSet(key, val);
+  _pendingSaves++;
+  emitSaveStatus("saving");
   try {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data", {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/culp_data?on_conflict=key", {
       method: "POST",
       headers: {
         "apikey": SUPABASE_KEY,
@@ -336,11 +355,21 @@ async function save(key, val) {
       },
       body: JSON.stringify({ key, value: JSON.stringify(val) })
     });
+    _pendingSaves--;
     if (!res.ok) {
       const err = await res.text();
       console.error("Supabase save error:", res.status, err);
+      emitSaveStatus("error");
+      return false;
     }
-  } catch(e) { console.error("Save exception:", e); }
+    if (_pendingSaves === 0) emitSaveStatus("saved");
+    return true;
+  } catch(e) {
+    _pendingSaves--;
+    console.error("Save exception:", e);
+    emitSaveStatus("error");
+    return false;
+  }
 }
 // ─── Claude API (acepta imágenes Y PDFs) ─────────────────────────────────────
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
@@ -2328,6 +2357,92 @@ function LoginModal({onClose, onSuccess}) {
   );
 }
 // ═══════════════════════════════════════════════════════════════════════════════
+// SAVE INDICATOR (esquina superior derecha)
+// ═══════════════════════════════════════════════════════════════════════════════
+function SaveIndicator() {
+  const [status, setStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  const timerRef = useRef(null);
+  useEffect(() => {
+    return subscribeSaveStatus((s) => {
+      setStatus(s);
+      clearTimeout(timerRef.current);
+      if (s === "saved") timerRef.current = setTimeout(() => setStatus(null), 1800);
+      if (s === "error") timerRef.current = setTimeout(() => setStatus(null), 6000);
+    });
+  }, []);
+  if (!status) return null;
+  const cfg = {
+    saving: { bg: C.gray, txt: "Guardando…", icon: "⟳" },
+    saved:  { bg: C.green, txt: "Guardado", icon: "✓" },
+    error:  { bg: C.red, txt: "Sin conexión · guardado local", icon: "⚠" }
+  }[status];
+  return (
+    <div style={{position:"fixed",top:10,right:10,zIndex:9999,background:cfg.bg,color:C.white,padding:"6px 12px",borderRadius:20,fontSize:11,fontWeight:700,fontFamily:FF,letterSpacing:0.8,boxShadow:"0 4px 12px rgba(0,0,0,0.35)",display:"flex",alignItems:"center",gap:6,transition:"all 0.2s"}}>
+      <span style={{display:"inline-block",animation:status==="saving"?"spin 1s linear infinite":"none"}}>{cfg.icon}</span> {cfg.txt}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MIGRACIONES DE FIXTURE (aplican una vez sobre datos ya guardados en Supabase)
+// ═══════════════════════════════════════════════════════════════════════════════
+const FIXTURE_MIGRATION_KEY = "culp:fixtureMigration_v3";
+const FIXTURE_RESULT_UPDATES = [
+  // Fecha 9
+  {fecha:"Fecha 9", home:"PUERTO NIZUC", away:"M. MORENO", gl:1, gv:0},
+  {fecha:"Fecha 9", home:"HINDU CLUB", away:"C.I.S.S.A.B.", gl:1, gv:2},
+  {fecha:"Fecha 9", home:"M. GRANDE", away:"BANFIELD", gl:3, gv:2},
+  {fecha:"Fecha 9", home:"B. HIPOTECARIO", away:"BANCO CIUDAD", gl:3, gv:2},
+  {fecha:"Fecha 9", home:"MACABI", away:"U. LA PLATA", gl:1, gv:1},
+  {fecha:"Fecha 9", home:"PUCARA", away:"CIUDAD B", gl:2, gv:2},
+  {fecha:"Fecha 9", home:"C.A.S.I.", away:"LANUS", gl:1, gv:1},
+  // Fecha 10
+  {fecha:"Fecha 10", home:"C.A.S.I.", away:"PUERTO NIZUC", gl:2, gv:1},
+  {fecha:"Fecha 10", home:"LANUS", away:"PUCARA", gl:1, gv:4},
+  {fecha:"Fecha 10", home:"CIUDAD B", away:"MACABI", gl:0, gv:2},
+  {fecha:"Fecha 10", home:"U. LA PLATA", away:"B. HIPOTECARIO", gl:3, gv:1},
+  {fecha:"Fecha 10", home:"BANCO CIUDAD", away:"M. GRANDE", gl:2, gv:1},
+  {fecha:"Fecha 10", home:"BANFIELD", away:"HINDU CLUB", gl:1, gv:2},
+  {fecha:"Fecha 10", home:"C.I.S.S.A.B.", away:"M. MORENO", gl:2, gv:2},
+];
+const FIXTURE_DATE_UPDATES = [
+  // Fecha 25 cambió de día (era 17 oct, va 10 oct)
+  {fecha:"Fecha 25", date:"sáb 10 oct 16:00", applyToAll:true},
+  // Fecha 10: LANUS vs PUCARA se jugó a las 10:30
+  {fecha:"Fecha 10", home:"LANUS", away:"PUCARA", date:"sáb 16 may 10:30"},
+];
+function applyFixtureMigration(currentFx) {
+  const fx = JSON.parse(JSON.stringify(currentFx || []));
+  let changed = false;
+  // 1) Cargar resultados (sólo si no fueron cargados manualmente ya)
+  for (const upd of FIXTURE_RESULT_UPDATES) {
+    const fecha = fx.find(f => f.label === upd.fecha);
+    if (!fecha) continue;
+    const m = fecha.matches.find(mm => mm.home === upd.home && mm.away === upd.away);
+    if (!m || m.played) continue;
+    m.played = true;
+    m.golesLocal = upd.gl;
+    m.golesVisitante = upd.gv;
+    m.applied = { golesLocal: upd.gl, golesVisitante: upd.gv, scorers: [], cards: [] };
+    changed = true;
+  }
+  // 2) Corregir fechas
+  for (const upd of FIXTURE_DATE_UPDATES) {
+    const fecha = fx.find(f => f.label === upd.fecha);
+    if (!fecha) continue;
+    if (upd.applyToAll) {
+      if (fecha.date !== upd.date) { fecha.date = upd.date; changed = true; }
+      fecha.matches.forEach(m => { if (m.date !== upd.date) { m.date = upd.date; changed = true; } });
+    } else {
+      const m = fecha.matches.find(mm => mm.home === upd.home && mm.away === upd.away);
+      if (m && m.date !== upd.date) { m.date = upd.date; changed = true; }
+    }
+  }
+  return {fx, changed};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function App() {
@@ -2352,22 +2467,32 @@ export default function App() {
     if(subview==="new"||subview==="edit"){ setSubview(null); setSelected(null); }
   }
   useEffect(()=>{
-    Promise.all([load(KEYS.rivals),load(KEYS.standings),load(KEYS.scorers),load(KEYS.seeded),load(KEYS.fixture),load(KEYS.cards),load(KEYS.fixtureSeeded)]).then(async([r,s,sc,seeded,fx,cd,fxSeeded])=>{
+    Promise.all([load(KEYS.rivals),load(KEYS.standings),load(KEYS.scorers),load(KEYS.seeded),load(KEYS.fixture),load(KEYS.cards),load(KEYS.fixtureSeeded),load(FIXTURE_MIGRATION_KEY)]).then(async([r,s,sc,seeded,fx,cd,fxSeeded,migrationDone])=>{
       if(r) setRivals(r);
       if(cd) setCards(cd);
-      // Si nunca se sembró el fixture O está vacío, cargar fixture inicial completo + standings
-      if(!fxSeeded || !fx || fx.length===0){
-        const initialFx = buildInitialFixture();
-        const initialStandings = computeStandingsFromFixture(initialFx);
-        setFixture(initialFx);
-        setStandings(initialStandings);
-        await save(KEYS.fixture, initialFx);
-        await save(KEYS.standings, initialStandings);
+      // Sólo reseembrar si NO hay fixture (Supabase ni local). Esto evita pisar datos del usuario.
+      let workingFx = fx;
+      let workingStandings = s;
+      if(!workingFx || workingFx.length===0){
+        workingFx = buildInitialFixture();
+        workingStandings = computeStandingsFromFixture(workingFx);
+        await save(KEYS.fixture, workingFx);
+        await save(KEYS.standings, workingStandings);
         await save(KEYS.fixtureSeeded, true);
-      } else {
-        setFixture(fx);
-        if(s) setStandings(s);
       }
+      // Migración: aplicar resultados nuevos (Fechas 9-10) y correcciones de fecha si nunca corrió
+      if(!migrationDone && workingFx && workingFx.length>0){
+        const {fx: migratedFx, changed} = applyFixtureMigration(workingFx);
+        if(changed){
+          workingFx = migratedFx;
+          workingStandings = computeStandingsFromFixture(workingFx);
+          await save(KEYS.fixture, workingFx);
+          await save(KEYS.standings, workingStandings);
+        }
+        await save(FIXTURE_MIGRATION_KEY, true);
+      }
+      setFixture(workingFx);
+      if(workingStandings) setStandings(workingStandings);
       // Si no hay goleadoras guardadas O nunca se sembró, cargar datos iniciales
       if(!seeded || !sc || sc.length===0) {
         setScorers(INITIAL_SCORERS);
@@ -2411,6 +2536,7 @@ export default function App() {
   return(
     <AdminContext.Provider value={isAdmin}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+      <SaveIndicator/>
       <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Barlow',sans-serif",color:C.white,maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column"}}>
         {/* Header */}
         <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"12px 18px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:100}}>
