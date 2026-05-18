@@ -659,6 +659,28 @@ const Icon = ({name,size=18,color="currentColor"})=>(
     {(P[name]||"").split(" M").map((d,i)=><path key={i} d={i===0?d:"M"+d}/>)}
   </svg>
 );
+// ─── Escudo CULP ──────────────────────────────────────────────────────────────
+// Usa /escudo-culp.png (guardado en public/ del repo). Si la imagen falla, cae al SVG inline.
+const CULPLogoSVG = ({size=32}) => (
+  <svg width={size} height={size*1.1} viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg" aria-label="Universitario La Plata">
+    <defs><clipPath id="shieldClip"><path d="M8 8 L92 8 L92 58 Q92 96 50 106 Q8 96 8 58 Z"/></clipPath></defs>
+    <path d="M8 8 L92 8 L92 58 Q92 96 50 106 Q8 96 8 58 Z" fill="#000"/>
+    <g clipPath="url(#shieldClip)">
+      <path d="M-10 50 L60 -20 L72 -8 L2 62 Z" fill="#fff" opacity="0.18"/>
+      <path d="M2 62 L72 -8 L82 2 L12 72 Z" fill="#fff" opacity="0.10"/>
+      <path d="M55 110 L110 55 L110 75 L75 110 Z" fill="#fff" opacity="0.18"/>
+    </g>
+    <path d="M32 25 L32 62 Q32 82 50 82 Q68 82 68 62 L68 25 L60 25 L60 62 Q60 74 50 74 Q40 74 40 62 L40 25 Z" fill="#fff"/>
+    <path d="M8 8 L92 8 L92 58 Q92 96 50 106 Q8 96 8 58 Z" fill="none" stroke="#fff" strokeWidth="4" strokeLinejoin="round"/>
+  </svg>
+);
+const CULPLogo = ({size=32}) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <CULPLogoSVG size={size}/>;
+  return <img src="/escudo-culp.png" alt="CULP" width={size} height={size}
+    onError={()=>setFailed(true)}
+    style={{display:"block",objectFit:"contain"}}/>;
+};
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {bg:"#080810",card:"#11111C",card2:"#181826",border:"#252535",accent:"#00C8FF",purple:"#7B2FBE",red:"#FF4D6D",green:"#4ade80",gold:"#FFD700",gray:"#7777AA",white:"#FFFFFF"};
 const inp = {background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.white,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none"};
@@ -684,11 +706,24 @@ const Modal=({title,onClose,children,wide=false})=>(
   </div>
 );
 const SCard=({title,color=C.accent,icon,children})=>(
-  <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:16,marginBottom:12}}>
+  <div className="anim-in" style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:16,marginBottom:12}}>
     {title&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}>{icon&&<Icon name={icon} size={13} color={color}/>}<span style={{color,fontSize:11,fontWeight:700,fontFamily:FF,letterSpacing:1}}>{title.toUpperCase()}</span></div>}
     {children}
   </div>
 );
+// ─── Skeleton loader ─────────────────────────────────────────────────────────
+const Skeleton = ({w="100%",h=14,r=4,style:sx={}}) => (
+  <div style={{width:w,height:h,borderRadius:r,background:`linear-gradient(90deg, ${C.border} 0%, ${C.card2} 50%, ${C.border} 100%)`,backgroundSize:"200% 100%",animation:"shimmer 1.4s ease-in-out infinite",...sx}}/>
+);
+// ─── Estilos globales (animaciones reutilizables) ───────────────────────────
+const GLOBAL_CSS = `
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.anim-in { animation: fadeInUp 0.35s ease-out both; }
+.anim-fade { animation: fadeIn 0.3s ease-out both; }
+.view-enter { animation: fadeInUp 0.35s ease-out both; }
+`;
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLANILLA IMPORTER — 3 modos: IA (PDF/foto), Manual (form vacío), Review (post-IA)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -909,13 +944,19 @@ function StandingsView({standings,setStandings,fixture}) {
     const last = getLastNResults(fixture||[], teamName, 5);
     if (last.length === 0) return <span style={{color:C.gray,fontSize:11}}>—</span>;
     return (
-      <div style={{display:"inline-flex",gap:3,alignItems:"center",justifyContent:"center"}}>
+      <div style={{display:"inline-flex",gap:4,alignItems:"center",justifyContent:"center"}}>
         {last.map((r,i)=>{
           const bg = r.result==="G"?C.green:r.result==="P"?C.red:C.gold;
-          return <span key={i} title={`${r.fecha} · ${r.isHome?"vs":"@"} ${r.opp} ${r.gf}-${r.ga}`} style={{display:"inline-block",width:16,height:16,borderRadius:4,background:bg,color:"#000",fontSize:10,fontWeight:800,lineHeight:"16px",textAlign:"center",fontFamily:FF}}>{r.result}</span>;
+          return <span key={i} title={`${r.fecha} · ${r.isHome?"vs":"@"} ${r.opp} ${r.gf}-${r.ga}`} style={{display:"inline-block",width:12,height:12,borderRadius:"50%",background:bg,boxShadow:`0 0 0 1px ${bg}66, 0 1px 2px rgba(0,0,0,0.3)`}}/>;
         })}
       </div>
     );
+  };
+  const posMedal = (i) => {
+    if (i === 0) return "🥇";
+    if (i === 1) return "🥈";
+    if (i === 2) return "🥉";
+    return i + 1;
   };
   return(
     <div>
@@ -930,7 +971,7 @@ function StandingsView({standings,setStandings,fixture}) {
             {standings.length===0&&<tr><td colSpan={isAdmin?12:11} style={{textAlign:"center",padding:32,color:C.gray}}>No hay equipos cargados aún</td></tr>}
             {standings.map((t,i)=>(
               <tr key={i} style={{background:t.isUs?C.purple+"22":i%2===0?C.card:C.card2,borderBottom:`1px solid ${C.border}`}}>
-                <td style={{textAlign:"center",padding:"10px 6px",color:C.gray,fontWeight:700}}>{i+1}</td>
+                <td style={{textAlign:"center",padding:"10px 6px",color:i<3?C.white:C.gray,fontWeight:700,fontSize:i<3?16:13}}>{posMedal(i)}</td>
                 <td style={{padding:"10px 6px",color:t.isUs?C.purple:C.white,fontWeight:t.isUs?700:400}}>{t.isUs&&"🔵 "}{t.name}</td>
                 {[t.pj,t.pg,t.pe,t.pp,t.gf,t.gc].map((v,j)=><td key={j} style={{textAlign:"center",padding:"10px 6px",color:"#ccc"}}>{v}</td>)}
                 <td style={{textAlign:"center",padding:"10px 6px",color:t.dif>0?C.green:t.dif<0?C.red:"#ccc",fontWeight:700}}>{t.dif>0?"+":""}{t.dif}</td>
@@ -2123,7 +2164,11 @@ function ViewsPanel({rivalId}) {
   if (!profiles || !views) {
     return (
       <SCard title="Vistas del plantel" icon="users" color={C.accent}>
-        <p style={{color:C.gray,fontSize:12,margin:0}}>Cargando…</p>
+        <Skeleton w="60%" h={14} style={{marginBottom:10}}/>
+        <Skeleton w="100%" h={8} style={{marginBottom:14}}/>
+        <div style={{display:"flex",gap:6}}>
+          {[0,1,2,3,4].map(i=><Skeleton key={i} w={26} h={26} r={"50%"}/>)}
+        </div>
       </SCard>
     );
   }
@@ -3139,21 +3184,22 @@ export default function App() {
   const nav=[{id:"home",label:"Inicio",icon:"home"},{id:"rivals",label:"Rivales",icon:"shield"},{id:"fixture",label:"Fixture",icon:"calendar"},{id:"standings",label:"Tabla",icon:"chart"},{id:"scorers",label:"Goles",icon:"trophy"},{id:"cards",label:"Tarjetas",icon:"flag"}];
   const navBtn=id=>({flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"10px 2px",background:"none",border:"none",cursor:"pointer",color:view===id?C.accent:C.gray,fontSize:9,fontWeight:700,fontFamily:FF,letterSpacing:0.4,borderTop:`2px solid ${view===id?C.accent:"transparent"}`,transition:"color 0.15s"});
   if(!loaded)return(
-    <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <div style={{width:48,height:48,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.accent}`,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <p style={{color:C.gray,fontFamily:FF,letterSpacing:2,fontSize:14}}>CARGANDO...</p>
+    <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:18}}>
+      <div style={{animation:"culpPulse 1.5s ease-in-out infinite"}}><CULPLogo size={64}/></div>
+      <style>{`@keyframes culpPulse{0%,100%{transform:scale(1);opacity:0.85}50%{transform:scale(1.08);opacity:1}}`}</style>
+      <p style={{color:C.gray,fontFamily:FF,letterSpacing:3,fontSize:13}}>CARGANDO...</p>
     </div>
   );
   return(
     <AdminContext.Provider value={isAdmin}>
     <AuthContext.Provider value={googleUser}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+      <style>{GLOBAL_CSS}</style>
       <SaveIndicator/>
       <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Barlow',sans-serif",color:C.white,maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column"}}>
         {/* Header */}
         <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"12px 18px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:100}}>
-          <div style={{width:30,height:30,background:C.accent+"22",border:`2px solid ${C.accent}`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>🏑</div>
+          <CULPLogo size={32}/>
           <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
           <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
             {googleUser ? (
@@ -3188,7 +3234,7 @@ export default function App() {
           </div>
         </div>
         {/* Content */}
-        <div style={{flex:1,padding:"18px 14px 80px",overflowY:"auto"}}>
+        <div key={view+(subview||"")} className="view-enter" style={{flex:1,padding:"18px 14px 80px",overflowY:"auto"}}>
           {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} fixture={fixture} cards={cards} setView={setView}/>}
           {view==="rivals"&&!subview&&<RivalsView rivals={rivals} onNew={()=>{setSelected(null);setSubview("new");}} onView={r=>{setSelected(r);setSubview("detail");}} onEdit={r=>{setSelected(r);setSubview("edit");}} onDelete={deleteRival}/>}
           {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla}/>}
