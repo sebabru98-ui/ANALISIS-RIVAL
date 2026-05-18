@@ -399,7 +399,18 @@ async function save(key, val) {
 const AUTH_STORAGE_KEY = "culp:supabaseAuth";
 function _getAuth() { try { const v = localStorage.getItem(AUTH_STORAGE_KEY); return v ? JSON.parse(v) : null; } catch { return null; } }
 function _setAuth(a) { try { a ? localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(a)) : localStorage.removeItem(AUTH_STORAGE_KEY); } catch {} }
-function _userIdFromToken(token) { try { return JSON.parse(atob(token.split(".")[1])).sub; } catch { return null; } }
+function _decodeJwt(token) { try { return JSON.parse(atob(token.split(".")[1])); } catch { return null; } }
+function _userIdFromToken(token) { return _decodeJwt(token)?.sub || null; }
+function _userInfoFromToken(token) {
+  const p = _decodeJwt(token); if (!p) return null;
+  const meta = p.user_metadata || p.raw_user_meta_data || {};
+  return {
+    id: p.sub,
+    email: p.email || meta.email,
+    name: meta.full_name || meta.name || p.email || "Usuario",
+    avatar: meta.avatar_url || meta.picture || null
+  };
+}
 
 function loginWithGoogle() {
   const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
@@ -456,22 +467,108 @@ async function getValidAccessToken() {
   }
   return auth.access_token;
 }
-// Captura el hash de OAuth (#access_token=...) si volvemos de Google y limpia la URL
-function consumeOAuthRedirect() {
+// Captura el callback de OAuth: hash (#access_token=...) o PKCE (?code=...)
+async function consumeOAuthRedirect() {
   if (typeof window === "undefined") return false;
+  // a) Implicit flow: token directo en el hash
   const hash = window.location.hash || "";
-  if (!hash.includes("access_token=")) return false;
-  const params = new URLSearchParams(hash.replace(/^#/, ""));
-  const access_token = params.get("access_token");
-  const refresh_token = params.get("refresh_token");
-  const expires_in = parseInt(params.get("expires_in") || "3600");
-  if (!access_token) return false;
-  _setAuth({
-    access_token, refresh_token,
-    expires_at: Date.now() + expires_in*1000
-  });
-  try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
-  return true;
+  if (hash.includes("access_token=")) {
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    const expires_in = parseInt(params.get("expires_in") || "3600");
+    if (access_token) {
+      _setAuth({ access_token, refresh_token, expires_at: Date.now() + expires_in*1000 });
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+      return true;
+    }
+  }
+  // b) PKCE flow: ?code=xxx en la query → cambiar por tokens
+  const qs = new URLSearchParams(window.location.search);
+  const code = qs.get("code");
+  if (code) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ auth_code: code, code_verifier: localStorage.getItem("culp:pkce_verifier") || "" })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.access_token) {
+          _setAuth({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            expires_at: Date.now() + (data.expires_in||3600)*1000
+          });
+          try { localStorage.removeItem("culp:pkce_verifier"); } catch {}
+          try { history.replaceState(null, "", window.location.pathname); } catch {}
+          return true;
+        }
+      } else {
+        console.warn("PKCE exchange falló:", await res.text());
+      }
+    } catch(e) { console.warn("PKCE exchange exception:", e); }
+  }
+  return false;
+}
+
+// ─── AuthContext: expone el usuario logueado a toda la app ──────────────────
+const AuthContext = React.createContext(null);
+const useAuthUser = () => React.useContext(AuthContext);
+
+// ─── Tracking: registrar vistas de rivales y reproducciones de videos ────────
+async function insertRivalView(profileId, rivalId, rivalName) {
+  const token = await getValidAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rival_views`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+      },
+      body: JSON.stringify({ profile_id: profileId, rival_id: String(rivalId), rival_name: rivalName, duration_seconds: 0 })
+    });
+    if (!res.ok) { console.warn("insertRivalView falló:", res.status, await res.text()); return null; }
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0 ? data[0].id : null;
+  } catch(e) { console.warn("insertRivalView exception:", e); return null; }
+}
+async function updateRivalViewDuration(viewId, durationSeconds) {
+  if (!viewId) return;
+  const token = await getValidAccessToken();
+  if (!token) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/rival_views?id=eq.${viewId}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({ duration_seconds: Math.round(durationSeconds) })
+    });
+  } catch(e) { console.warn("updateRivalViewDuration:", e); }
+}
+async function logVideoPlay(profileId, rivalId, video) {
+  const token = await getValidAccessToken();
+  if (!token) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/video_views`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({ profile_id: profileId, rival_id: String(rivalId), video_url: video.url, video_title: video.title })
+    });
+  } catch(e) { console.warn("logVideoPlay:", e); }
 }
 
 // ─── Claude API (acepta imágenes Y PDFs) ─────────────────────────────────────
@@ -1928,9 +2025,14 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // VIDEOS SECTION (dentro de RivalDetail)
 // ═══════════════════════════════════════════════════════════════════════════════
-function VideosSection({videos}) {
+function VideosSection({videos, rivalId}) {
+  const user = useAuthUser();
   const [activeCat, setActiveCat] = useState("__all__");
   const [playing, setPlaying] = useState(null); // {video, info}
+  function play(video, info) {
+    setPlaying({video, info});
+    if (user?.id && rivalId != null) logVideoPlay(user.id, rivalId, video);
+  }
   if (!videos || videos.length === 0) return null;
   const cats = VIDEO_CATEGORIES.filter(c => videos.some(v => v.category === c));
   const filtered = activeCat === "__all__" ? videos : videos.filter(v => v.category === activeCat);
@@ -1950,7 +2052,7 @@ function VideosSection({videos}) {
           const kindColor = info?.kind==="youtube"?C.red:info?.kind==="drive"?C.gold:info?.kind==="vimeo"?C.purple:C.gray;
           const kindLabel = info?{youtube:"YouTube",drive:"Drive",vimeo:"Vimeo",other:"Link"}[info.kind]:"?";
           return (
-            <button key={v.id} onClick={()=>setPlaying({video:v, info})} style={{textAlign:"left",cursor:"pointer",background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:10,display:"flex",flexDirection:"column",gap:6}}>
+            <button key={v.id} onClick={()=>play(v, info)} style={{textAlign:"left",cursor:"pointer",background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:10,display:"flex",flexDirection:"column",gap:6}}>
               <div style={{aspectRatio:"16/9",background:"#000",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:28,opacity:0.8}}>▶</div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <Badge text={kindLabel} color={kindColor}/>
@@ -1977,11 +2079,247 @@ function VideosSection({videos}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// VIEWS PANEL — sólo staff: muestra qué jugadoras vieron este análisis
+// ═══════════════════════════════════════════════════════════════════════════════
+function ViewsPanel({rivalId}) {
+  const [profiles, setProfiles] = useState(null);   // todos los profiles
+  const [views, setViews] = useState(null);         // filas de rival_views_summary
+  const [expanded, setExpanded] = useState(false);
+  const [showPending, setShowPending] = useState(false);
+  const [error, setError] = useState(null);
+
+  const load = React.useCallback(async () => {
+    setError(null);
+    try {
+      const token = await getValidAccessToken();
+      if (!token) { setError("Iniciá sesión con Google para ver el panel"); return; }
+      // 1) Todos los profiles (staff debe poder leer todos gracias a RLS policy)
+      const pRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id,email,full_name,avatar_url,rol,created_at&order=full_name.asc`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      if (!pRes.ok) { setError(`profiles HTTP ${pRes.status}`); return; }
+      const pData = await pRes.json();
+      // 2) Resumen de vistas para este rival
+      const vRes = await fetch(`${SUPABASE_URL}/rest/v1/rival_views_summary?rival_id=eq.${encodeURIComponent(String(rivalId))}&select=*`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      if (!vRes.ok) { setError(`views HTTP ${vRes.status}`); return; }
+      const vData = await vRes.json();
+      setProfiles(pData);
+      setViews(vData);
+    } catch(e) { setError(String(e?.message||e)); }
+  }, [rivalId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (error) {
+    return (
+      <SCard title="Vistas del plantel" icon="users" color={C.accent}>
+        <p style={{color:C.red,fontSize:12,margin:0}}>⚠ {error}</p>
+        <Btn small outline onClick={load} style={{marginTop:8}}>Reintentar</Btn>
+      </SCard>
+    );
+  }
+  if (!profiles || !views) {
+    return (
+      <SCard title="Vistas del plantel" icon="users" color={C.accent}>
+        <p style={{color:C.gray,fontSize:12,margin:0}}>Cargando…</p>
+      </SCard>
+    );
+  }
+
+  // Mapa profileId -> resumen de vista
+  const viewByProfile = {};
+  views.forEach(v => { viewByProfile[v.profile_id] = v; });
+
+  // Jugadoras = profiles con rol "jugadora" (denominador para %)
+  const jugadoras = profiles.filter(p => p.rol !== "staff");
+  const staffProfiles = profiles.filter(p => p.rol === "staff");
+
+  const jugadorasQueVieron = jugadoras.filter(p => viewByProfile[p.id]);
+  const jugadorasPendientes = jugadoras.filter(p => !viewByProfile[p.id]);
+  const staffQueVio = staffProfiles.filter(p => viewByProfile[p.id]);
+
+  const total = jugadoras.length;
+  const vistas = jugadorasQueVieron.length;
+  const pct = total > 0 ? Math.round((vistas/total)*100) : 0;
+  const barColor = pct >= 80 ? C.green : pct >= 50 ? C.gold : C.red;
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60) return "hace segundos";
+    if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff/3600)} h`;
+    if (diff < 86400*7) return `hace ${Math.floor(diff/86400)} d`;
+    return d.toLocaleDateString("es-AR", {day:"2-digit",month:"2-digit",year:"2-digit"});
+  }
+  function fmtDur(secs) {
+    if (!secs) return "—";
+    if (secs < 60) return `${secs}s`;
+    const m = Math.floor(secs/60);
+    if (m < 60) return `${m} min`;
+    return `${Math.floor(m/60)}h ${m%60}m`;
+  }
+  function Avatar({p, size=28}) {
+    if (p.avatar_url) {
+      return <img src={p.avatar_url} alt="" referrerPolicy="no-referrer"
+        style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>;
+    }
+    const initial = (p.full_name||p.email||"?").slice(0,1).toUpperCase();
+    return (
+      <div style={{width:size,height:size,borderRadius:"50%",background:C.accent+"33",border:`1px solid ${C.accent}66`,
+        display:"flex",alignItems:"center",justifyContent:"center",color:C.accent,fontSize:size*0.4,fontWeight:700,flexShrink:0}}>
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <SCard title="Vistas del plantel" icon="users" color={C.accent}>
+      {/* Barra de progreso + KPIs */}
+      <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",marginBottom:12}}>
+        <div style={{flex:"1 1 200px",minWidth:180}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:12,color:C.white}}>
+            <span><b style={{color:barColor,fontSize:16,fontFamily:FF}}>{vistas}</b> <span style={{color:C.gray}}>de</span> <b style={{color:C.white}}>{total}</b> jugadoras vieron</span>
+            <span style={{color:barColor,fontWeight:700}}>{pct}%</span>
+          </div>
+          <div style={{height:8,background:C.border,borderRadius:4,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${pct}%`,background:barColor,transition:"width 0.4s"}}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <Badge text={`${jugadorasPendientes.length} pendientes`} color={jugadorasPendientes.length===0?C.green:C.red}/>
+          {staffQueVio.length > 0 && <Badge text={`+${staffQueVio.length} staff`} color={C.purple}/>}
+          <Btn small outline onClick={load} title="Refrescar"><span style={{fontSize:14,lineHeight:1}}>↻</span></Btn>
+        </div>
+      </div>
+
+      {/* Avatares en miniatura: jugadoras que vieron */}
+      {jugadorasQueVieron.length > 0 && (
+        <div style={{display:"flex",alignItems:"center",gap:-4,flexWrap:"wrap",marginBottom:10}}>
+          {jugadorasQueVieron.slice(0, 12).map(p => (
+            <div key={p.id} title={p.full_name||p.email} style={{marginRight:-6}}>
+              <Avatar p={p} size={26}/>
+            </div>
+          ))}
+          {jugadorasQueVieron.length > 12 && (
+            <span style={{marginLeft:10,color:C.gray,fontSize:11}}>+{jugadorasQueVieron.length-12} más</span>
+          )}
+        </div>
+      )}
+
+      {/* Toggle detalle expandible */}
+      <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+        <Btn small outline onClick={()=>{setExpanded(e=>!e); setShowPending(false);}}>
+          {expanded ? "Ocultar detalle" : `Ver detalle (${jugadorasQueVieron.length})`}
+        </Btn>
+        {jugadorasPendientes.length > 0 && (
+          <Btn small outline color={C.red} onClick={()=>{setShowPending(p=>!p); setExpanded(false);}}>
+            {showPending ? "Ocultar pendientes" : `Pendientes (${jugadorasPendientes.length})`}
+          </Btn>
+        )}
+      </div>
+
+      {/* Detalle de vistas */}
+      {expanded && (
+        <div style={{marginTop:14,borderTop:`1px solid ${C.border}`,paddingTop:12}}>
+          {jugadorasQueVieron.length === 0 && staffQueVio.length === 0 && (
+            <p style={{color:C.gray,fontSize:12,margin:0}}>Nadie vio este análisis todavía.</p>
+          )}
+          {[...jugadorasQueVieron, ...staffQueVio].map(p => {
+            const v = viewByProfile[p.id];
+            const isStaff = p.rol === "staff";
+            return (
+              <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:`1px solid ${C.border}55`}}>
+                <Avatar p={p} size={32}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{color:C.white,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {p.full_name || p.email}
+                    </span>
+                    {isStaff && <Badge text="STAFF" color={C.purple}/>}
+                  </div>
+                  <div style={{color:C.gray,fontSize:11,marginTop:2}}>
+                    {fmtDate(v.last_view)} · {v.view_count} {v.view_count===1?"vez":"veces"} · {fmtDur(v.total_seconds)}
+                    {v.videos_played > 0 && <> · <span style={{color:C.purple}}>{v.videos_played} video{v.videos_played===1?"":"s"}</span></>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Lista de pendientes */}
+      {showPending && (
+        <div style={{marginTop:14,borderTop:`1px solid ${C.border}`,paddingTop:12}}>
+          {jugadorasPendientes.length === 0 ? (
+            <p style={{color:C.green,fontSize:12,margin:0}}>✅ Todas las jugadoras vieron este análisis.</p>
+          ) : (
+            <>
+              <p style={{color:C.gray,fontSize:11,margin:"0 0 8px"}}>Estas jugadoras todavía no abrieron el análisis:</p>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))",gap:8}}>
+                {jugadorasPendientes.map(p => (
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,background:C.card,border:`1px solid ${C.red}33`,borderRadius:8,padding:"6px 10px"}}>
+                    <Avatar p={p} size={24}/>
+                    <span style={{color:C.white,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {p.full_name || p.email}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </SCard>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // RIVAL DETAIL
 // ═══════════════════════════════════════════════════════════════════════════════
 function RivalDetail({rival,onEdit,onBack}) {
   const isAdmin = useIsAdmin();
+  const user = useAuthUser();
   const a=rival.analysis||{};
+
+  // ─── Tracking: contar como "vista" si estuvo más de 15 segundos ──────────
+  useEffect(() => {
+    if (!user?.id || !rival?.id) return; // sin login (o staff por password) no se trackea
+    let viewId = null;
+    let cancelled = false;
+    const startTs = Date.now();
+    // 1) A los 15s, insertar la vista
+    const insertTimer = setTimeout(async () => {
+      if (cancelled) return;
+      viewId = await insertRivalView(user.id, rival.id, rival.name);
+    }, 15_000);
+    // 2) Cada 30s, actualizar duración (por si cierra el browser sin desmontar)
+    const updateInterval = setInterval(() => {
+      if (viewId) updateRivalViewDuration(viewId, (Date.now()-startTs)/1000);
+    }, 30_000);
+    // 3) Si la pestaña pasa a hidden, mandar update con sendBeacon-like fetch
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden" && viewId) {
+        updateRivalViewDuration(viewId, (Date.now()-startTs)/1000);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      clearTimeout(insertTimer);
+      clearInterval(updateInterval);
+      document.removeEventListener("visibilitychange", onVisibility);
+      // Update final al desmontar
+      if (viewId) updateRivalViewDuration(viewId, (Date.now()-startTs)/1000);
+    };
+  }, [user?.id, rival?.id]);
+
+
   const has=(...keys)=>keys.some(k=>a[k]&&String(a[k]).trim());
   const Row=({l,v})=>v?<div style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-start"}}><span style={{color:C.gray,fontSize:12,minWidth:140,flexShrink:0}}>{l}:</span><span style={{color:C.white,fontSize:13,whiteSpace:"pre-wrap",wordBreak:"break-word",flex:1}}>{v}</span></div>:null;
   const Para=({l,v,accent=C.accent})=>v?<div style={{marginBottom:12}}><p style={{color:accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 5px"}}>{l.toUpperCase()}</p><p style={{color:C.white,fontSize:13,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.55}}>{v}</p></div>:null;
@@ -2071,7 +2409,9 @@ function RivalDetail({rival,onEdit,onBack}) {
         </div>
       )}
 
-      <VideosSection videos={rival.videos}/>
+      <VideosSection videos={rival.videos} rivalId={rival.id}/>
+
+      {isAdmin && <div className="rival-no-print"><ViewsPanel rivalId={rival.id}/></div>}
 
       {(has("city","colors","coach","assistant","physio")||has("goalkeeper","captain","keyPlayers","injuries"))&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>
@@ -2454,10 +2794,6 @@ function Dashboard({rivals,standings,scorers,fixture,cards,setView}) {
   const stats=[{l:"Rivales analizados",v:rivals.length,c:C.accent,icon:"shield"},{l:"Partidos registrados",v:rivals.reduce((a,r)=>a+(r.matches?.length||0),0),c:C.purple,icon:"chart"},{l:"Victorias",v:totalWins,c:C.green,icon:"trophy"},{l:"Posición actual",v:usPos>=0?`#${usPos+1}`:"—",c:C.gold,icon:"star"}];
   return(
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-        <div style={{width:40,height:40,background:C.accent+"22",border:`2px solid ${C.accent}`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🏑</div>
-        <div><h2 style={{margin:0,color:C.white,fontFamily:FF,fontSize:22,letterSpacing:1}}>CULP HOCKEY</h2><p style={{margin:0,color:C.gray,fontSize:10,letterSpacing:0.5}}>PRIMERA DAMAS · ANÁLISIS DE RIVALES</p></div>
-      </div>
       {/* Próximo partido + dossier */}
       {next && (
         <div onClick={()=>setShowDossier(true)} style={{background:`linear-gradient(135deg,${C.gold}22,${C.accent}11)`,border:`1px solid ${C.gold}55`,borderRadius:12,padding:16,marginBottom:16,cursor:"pointer",transition:"transform 0.15s"}}>
@@ -2692,34 +3028,45 @@ export default function App() {
   useEffect(()=>{
     try { if(localStorage.getItem(ADMIN_AUTH_KEY)==="1") setPasswordAdmin(true); } catch {}
   },[]);
-  // Auth Google: detectar callback, refrescar token y traer perfil
+  // Auth Google: detectar callback, refrescar token, pintar desde JWT y luego enriquecer con profile
   useEffect(()=>{
     let cancelled = false;
     (async () => {
-      consumeOAuthRedirect(); // si volvemos de Google, guarda los tokens
+      // 1) Si volvemos de Google, capturar tokens del hash (implicit) o del code (PKCE)
+      const consumed = await consumeOAuthRedirect();
       const token = await getValidAccessToken();
       if (!token) return;
-      const uid = _userIdFromToken(token);
-      if (!uid) return;
-      const profile = await fetchSupabaseProfile(token, uid);
-      if (cancelled) return;
-      if (profile) {
-        setGoogleUser({
-          id: uid,
-          email: profile.email,
-          name: profile.full_name || profile.email,
-          avatar: profile.avatar_url,
-          rol: profile.rol || "jugadora"
-        });
-      } else {
-        // El perfil aún no existe (el trigger handle_new_user tarda un instante). Reintento corto.
-        setTimeout(async () => {
-          const p2 = await fetchSupabaseProfile(token, uid);
-          if (!cancelled && p2) {
-            setGoogleUser({ id: uid, email: p2.email, name: p2.full_name||p2.email, avatar: p2.avatar_url, rol: p2.rol||"jugadora" });
-          }
-        }, 1500);
-      }
+      // 2) Pintar el usuario inmediatamente desde el JWT (no depende de RLS / profiles)
+      const jwtInfo = _userInfoFromToken(token);
+      if (cancelled || !jwtInfo) return;
+      setGoogleUser({ ...jwtInfo, rol: "jugadora" }); // rol por defecto hasta confirmar con DB
+      // 3) Intentar enriquecer con profile (para saber si es staff). Si falla, queda jugadora.
+      try {
+        const profile = await fetchSupabaseProfile(token, jwtInfo.id);
+        if (!cancelled && profile) {
+          setGoogleUser({
+            id: jwtInfo.id,
+            email: profile.email || jwtInfo.email,
+            name: profile.full_name || jwtInfo.name,
+            avatar: profile.avatar_url || jwtInfo.avatar,
+            rol: profile.rol || "jugadora"
+          });
+        } else if (!cancelled) {
+          // Reintento corto por si el trigger handle_new_user tardó
+          setTimeout(async () => {
+            const p2 = await fetchSupabaseProfile(token, jwtInfo.id);
+            if (!cancelled && p2) {
+              setGoogleUser({
+                id: jwtInfo.id,
+                email: p2.email || jwtInfo.email,
+                name: p2.full_name || jwtInfo.name,
+                avatar: p2.avatar_url || jwtInfo.avatar,
+                rol: p2.rol || "jugadora"
+              });
+            }
+          }, 2000);
+        }
+      } catch(e) { console.warn("No se pudo leer profiles (probablemente RLS):", e); }
     })();
     // Refresh proactivo cada 30 min
     const refreshInterval = setInterval(()=>{ getValidAccessToken().catch(()=>{}); }, 30*60*1000);
@@ -2800,6 +3147,7 @@ export default function App() {
   );
   return(
     <AdminContext.Provider value={isAdmin}>
+    <AuthContext.Provider value={googleUser}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
       <SaveIndicator/>
       <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Barlow',sans-serif",color:C.white,maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column"}}>
@@ -2857,6 +3205,7 @@ export default function App() {
         </div>
       </div>
       {showLogin && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>{setPasswordAdmin(true);setShowLogin(false);}}/>}
+    </AuthContext.Provider>
     </AdminContext.Provider>
   );
 }
