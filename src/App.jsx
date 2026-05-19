@@ -682,7 +682,7 @@ const CULPLogo = ({size=32}) => {
     style={{display:"block",objectFit:"contain"}}/>;
 };
 // ─── Tokens ───────────────────────────────────────────────────────────────────
-const C = {bg:"#080810",card:"#11111C",card2:"#181826",border:"#252535",accent:"#00C8FF",purple:"#7B2FBE",red:"#FF4D6D",green:"#4ade80",gold:"#FFD700",gray:"#7777AA",white:"#FFFFFF"};
+const C = {bg:"#07070F",card:"#13131F",card2:"#1D1D2C",border:"#2C2C40",accent:"#00C8FF",purple:"#7B2FBE",red:"#FF4D6D",green:"#4ade80",gold:"#FFD700",gray:"#8888B0",white:"#FFFFFF"};
 const inp = {background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.white,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none"};
 const FF = "'Barlow Condensed',sans-serif";
 // ─── UI ───────────────────────────────────────────────────────────────────────
@@ -723,6 +723,91 @@ const GLOBAL_CSS = `
 .anim-in { animation: fadeInUp 0.35s ease-out both; }
 .anim-fade { animation: fadeIn 0.3s ease-out both; }
 .view-enter { animation: fadeInUp 0.35s ease-out both; }
+* { box-sizing: border-box; }
+
+/* ─── Shell responsive (mobile-first) ─────────────────────────────── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  color: ${C.white};
+  font-family: 'Barlow', sans-serif;
+  background:
+    radial-gradient(900px circle at 0% -5%, ${C.purple}1F, transparent 45%),
+    radial-gradient(900px circle at 100% -5%, ${C.accent}16, transparent 45%),
+    ${C.bg};
+}
+.sidebar { display: none; }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 16px;
+  background: ${C.card}E6;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid ${C.border};
+}
+.topbar-brand { display: flex; align-items: center; gap: 10px; }
+.topbar-title { display: none; }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.content {
+  flex: 1; width: 100%;
+  padding: 18px 14px 92px;
+  overflow-y: auto;
+}
+
+.bottomnav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  display: flex;
+  background: ${C.card}F2;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-top: 1px solid ${C.border};
+}
+
+/* ─── Sidebar (desktop) ───────────────────────────────────────────── */
+.side-item {
+  display: flex; align-items: center; gap: 13px; width: 100%;
+  padding: 12px 14px; margin-bottom: 4px;
+  border: none; border-radius: 11px; background: none; cursor: pointer;
+  color: ${C.gray}; font-family: ${FF}; font-weight: 700; font-size: 14.5px;
+  letter-spacing: 0.6px; text-transform: uppercase; text-align: left;
+  transition: background .15s, color .15s, transform .15s;
+}
+.side-item:hover { background: ${C.card2}; color: ${C.white}; }
+.side-item.active {
+  color: ${C.accent};
+  background: linear-gradient(90deg, ${C.accent}22, ${C.accent}08 60%, transparent);
+  box-shadow: inset 3px 0 0 ${C.accent}, 0 0 0 1px ${C.accent}22;
+}
+
+@media (min-width: 900px) {
+  .sidebar {
+    display: flex; flex-direction: column; flex-shrink: 0;
+    width: 250px; padding: 22px 14px 18px;
+    position: sticky; top: 0; height: 100vh;
+    background: ${C.card}B3;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-right: 1px solid ${C.border};
+  }
+  .sidebar-nav { margin-top: 22px; flex: 1; }
+  .bottomnav { display: none; }
+  .topbar-brand { display: none; }
+  .topbar-actions { display: none; }
+  .topbar { padding: 16px 36px; }
+  .topbar-title {
+    display: block; font-family: ${FF}; font-weight: 800;
+    font-size: 22px; letter-spacing: 0.5px; color: ${C.white};
+  }
+  .content {
+    padding: 30px 36px 48px;
+    max-width: 1480px; margin: 0 auto;
+  }
+}
+@media (min-width: 1280px) {
+  .sidebar { width: 268px; }
+  .content { padding: 34px 52px 56px; }
+}
 `;
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLANILLA IMPORTER — 3 modos: IA (PDF/foto), Manual (form vacío), Review (post-IA)
@@ -3183,6 +3268,36 @@ export default function App() {
   }
   const nav=[{id:"home",label:"Inicio",icon:"home"},{id:"rivals",label:"Rivales",icon:"shield"},{id:"fixture",label:"Fixture",icon:"calendar"},{id:"standings",label:"Tabla",icon:"chart"},{id:"scorers",label:"Goles",icon:"trophy"},{id:"cards",label:"Tarjetas",icon:"flag"}];
   const navBtn=id=>({flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"10px 2px",background:"none",border:"none",cursor:"pointer",color:view===id?C.accent:C.gray,fontSize:9,fontWeight:700,fontFamily:FF,letterSpacing:0.4,borderTop:`2px solid ${view===id?C.accent:"transparent"}`,transition:"color 0.15s"});
+  const PAGE_LABELS={home:"Inicio",rivals:"Rivales",fixture:"Fixture",standings:"Tabla de posiciones",scorers:"Goleadoras",cards:"Tarjetas"};
+  const authBtn = googleUser ? (
+    <button
+      onClick={logout}
+      title={`${googleUser.email} · ${isAdmin?"Staff":"Jugadora"} · click para cerrar sesión`}
+      style={{background:isAdmin?C.green+"22":C.card2,border:`1px solid ${isAdmin?C.green+"66":C.border}`,borderRadius:20,padding:"3px 12px 3px 3px",cursor:"pointer",color:C.white,display:"flex",alignItems:"center",gap:8,fontSize:12,fontWeight:600,width:"100%",justifyContent:"flex-start"}}
+    >
+      {googleUser.avatar
+        ? <img src={googleUser.avatar} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} referrerPolicy="no-referrer"/>
+        : <div style={{width:28,height:28,borderRadius:"50%",background:C.accent+"33",border:`1px solid ${C.accent}66`,display:"flex",alignItems:"center",justifyContent:"center",color:C.accent,fontSize:12,fontWeight:700}}>{(googleUser.name||googleUser.email||"?").slice(0,1).toUpperCase()}</div>}
+      <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"left"}}>{(googleUser.name||googleUser.email).split(" ")[0]}</span>
+      {isAdmin && <Icon name="check" size={12} color={C.green}/>}
+    </button>
+  ) : passwordAdmin ? (
+    <button
+      onClick={logout}
+      title="Staff por contraseña · cerrar sesión"
+      style={{background:C.green+"22",border:`1px solid ${C.green}66`,borderRadius:9,padding:"7px 12px",cursor:"pointer",color:C.green,display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,fontFamily:FF,letterSpacing:0.5,width:"100%",justifyContent:"center"}}
+    >
+      <Icon name="check" size={13}/> STAFF · CERRAR SESIÓN
+    </button>
+  ) : (
+    <button
+      onClick={()=>setShowLogin(true)}
+      title="Iniciar sesión"
+      style={{background:C.accent+"22",border:`1px solid ${C.accent}66`,borderRadius:9,padding:"8px 12px",cursor:"pointer",color:C.accent,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:700,fontFamily:FF,letterSpacing:0.5,width:"100%",justifyContent:"center"}}
+    >
+      <Icon name="shield" size={13}/> INGRESAR
+    </button>
+  );
   if(!loaded)return(
     <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:18}}>
       <div style={{animation:"culpPulse 1.5s ease-in-out infinite"}}><CULPLogo size={64}/></div>
@@ -3196,58 +3311,53 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
       <style>{GLOBAL_CSS}</style>
       <SaveIndicator/>
-      <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Barlow',sans-serif",color:C.white,maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column"}}>
-        {/* Header */}
-        <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"12px 18px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:100}}>
-          <CULPLogo size={32}/>
-          <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
-          <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
-            {googleUser ? (
-              <button
-                onClick={logout}
-                title={`${googleUser.email} · ${isAdmin?"Staff":"Jugadora"} · click para cerrar sesión`}
-                style={{background:isAdmin?C.green+"22":C.card2,border:`1px solid ${isAdmin?C.green+"66":C.border}`,borderRadius:20,padding:"3px 10px 3px 3px",cursor:"pointer",color:C.white,display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600}}
-              >
-                {googleUser.avatar
-                  ? <img src={googleUser.avatar} alt="" style={{width:24,height:24,borderRadius:"50%",objectFit:"cover"}} referrerPolicy="no-referrer"/>
-                  : <div style={{width:24,height:24,borderRadius:"50%",background:C.accent+"33",border:`1px solid ${C.accent}66`,display:"flex",alignItems:"center",justifyContent:"center",color:C.accent,fontSize:11,fontWeight:700}}>{(googleUser.name||googleUser.email||"?").slice(0,1).toUpperCase()}</div>}
-                <span style={{maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(googleUser.name||googleUser.email).split(" ")[0]}</span>
-                {isAdmin && <Icon name="check" size={11} color={C.green}/>}
-              </button>
-            ) : passwordAdmin ? (
-              <button
-                onClick={logout}
-                title="Staff por contraseña · cerrar sesión"
-                style={{background:C.green+"22",border:`1px solid ${C.green}66`,borderRadius:8,padding:"5px 8px",cursor:"pointer",color:C.green,display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
-              >
-                <Icon name="check" size={12}/> STAFF
-              </button>
-            ) : (
-              <button
-                onClick={()=>setShowLogin(true)}
-                title="Iniciar sesión"
-                style={{background:C.accent+"22",border:`1px solid ${C.accent}66`,borderRadius:8,padding:"5px 10px",cursor:"pointer",color:C.accent,display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,fontFamily:FF,letterSpacing:0.5}}
-              >
-                <Icon name="shield" size={12}/> INGRESAR
-              </button>
-            )}
+      <div className="app-shell">
+        {/* Sidebar (desktop) */}
+        <aside className="sidebar">
+          <div style={{display:"flex",alignItems:"center",gap:11,padding:"2px 8px 0"}}>
+            <CULPLogo size={38}/>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1}}>CULP HOCKEY</div>
+              <div style={{fontSize:9.5,color:C.gray,letterSpacing:0.8,marginTop:3}}>ANÁLISIS DE RIVALES</div>
+            </div>
           </div>
-        </div>
-        {/* Content */}
-        <div key={view+(subview||"")} className="view-enter" style={{flex:1,padding:"18px 14px 80px",overflowY:"auto"}}>
-          {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} fixture={fixture} cards={cards} setView={setView}/>}
-          {view==="rivals"&&!subview&&<RivalsView rivals={rivals} onNew={()=>{setSelected(null);setSubview("new");}} onView={r=>{setSelected(r);setSubview("detail");}} onEdit={r=>{setSelected(r);setSubview("edit");}} onDelete={deleteRival}/>}
-          {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla}/>}
-          {view==="rivals"&&subview==="edit"&&<RivalForm rival={selected} onSave={saveRival} onCancel={()=>{setSubview(null);setSelected(null);}} onUpdateScorers={updateScorersFromPlanilla}/>}
-          {view==="rivals"&&subview==="detail"&&<RivalDetail rival={selected} onEdit={()=>setSubview("edit")} onBack={()=>{setSubview(null);setSelected(null);}}/>}
-          {view==="standings"&&<StandingsView standings={standings} setStandings={setStandings} fixture={fixture}/>}
-          {view==="scorers"&&<ScorersView scorers={scorers} setScorers={setScorers} rivals={rivals}/>}
-          {view==="fixture"&&<FixtureView fixture={fixture} setFixture={setFixture} standings={standings} setStandings={setStandings} scorers={scorers} setScorers={setScorers} cards={cards} setCards={setCards} rivals={rivals} setRivals={setRivals}/>}
-          {view==="cards"&&<CardsView cards={cards} setCards={setCards}/>}
-        </div>
-        {/* Bottom nav */}
-        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:800,background:C.card,borderTop:`1px solid ${C.border}`,display:"flex"}}>
-          {nav.map(n=><button key={n.id} style={navBtn(n.id)} onClick={()=>{setView(n.id);setSubview(null);setSelected(null);}}><Icon name={n.icon} size={18}/>{n.label.toUpperCase()}</button>)}
+          <nav className="sidebar-nav">
+            {nav.map(n=>(
+              <button key={n.id} className={"side-item"+(view===n.id?" active":"")} onClick={()=>{setView(n.id);setSubview(null);setSelected(null);}}>
+                <Icon name={n.icon} size={19}/><span>{n.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div style={{paddingTop:14,borderTop:`1px solid ${C.border}`}}>{authBtn}</div>
+        </aside>
+
+        {/* Main */}
+        <div className="app-main">
+          {/* Topbar */}
+          <div className="topbar">
+            <div className="topbar-brand">
+              <CULPLogo size={30}/>
+              <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
+            </div>
+            <div className="topbar-title">{PAGE_LABELS[view]||""}</div>
+            <div className="topbar-actions" style={{maxWidth:180}}>{authBtn}</div>
+          </div>
+          {/* Content */}
+          <div key={view+(subview||"")} className="view-enter content">
+            {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} fixture={fixture} cards={cards} setView={setView}/>}
+            {view==="rivals"&&!subview&&<RivalsView rivals={rivals} onNew={()=>{setSelected(null);setSubview("new");}} onView={r=>{setSelected(r);setSubview("detail");}} onEdit={r=>{setSelected(r);setSubview("edit");}} onDelete={deleteRival}/>}
+            {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla}/>}
+            {view==="rivals"&&subview==="edit"&&<RivalForm rival={selected} onSave={saveRival} onCancel={()=>{setSubview(null);setSelected(null);}} onUpdateScorers={updateScorersFromPlanilla}/>}
+            {view==="rivals"&&subview==="detail"&&<RivalDetail rival={selected} onEdit={()=>setSubview("edit")} onBack={()=>{setSubview(null);setSelected(null);}}/>}
+            {view==="standings"&&<StandingsView standings={standings} setStandings={setStandings} fixture={fixture}/>}
+            {view==="scorers"&&<ScorersView scorers={scorers} setScorers={setScorers} rivals={rivals}/>}
+            {view==="fixture"&&<FixtureView fixture={fixture} setFixture={setFixture} standings={standings} setStandings={setStandings} scorers={scorers} setScorers={setScorers} cards={cards} setCards={setCards} rivals={rivals} setRivals={setRivals}/>}
+            {view==="cards"&&<CardsView cards={cards} setCards={setCards}/>}
+          </div>
+          {/* Bottom nav (mobile) */}
+          <div className="bottomnav">
+            {nav.map(n=><button key={n.id} style={navBtn(n.id)} onClick={()=>{setView(n.id);setSubview(null);setSelected(null);}}><Icon name={n.icon} size={18}/>{n.label.toUpperCase()}</button>)}
+          </div>
         </div>
       </div>
       {showLogin && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>{setPasswordAdmin(true);setShowLogin(false);}}/>}
