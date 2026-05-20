@@ -726,7 +726,7 @@ const Skeleton = ({w="100%",h=14,r=4,style:sx={}}) => (
 // ─── Estilos globales (animaciones reutilizables) ───────────────────────────
 const buildGlobalCSS = (C) => `
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .anim-in { animation: fadeInUp 0.35s ease-out both; }
 .anim-fade { animation: fadeIn 0.3s ease-out both; }
