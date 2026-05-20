@@ -651,6 +651,8 @@ const P = {
   camera:"M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   calendar:"M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18",
   chevron:"M6 9l6 6 6-6",
+  sun:"M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42",
+  moon:"M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
   share:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13",
   print:"M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z",
 };
@@ -681,17 +683,23 @@ const CULPLogo = ({size=32}) => {
     onError={()=>setFailed(true)}
     style={{display:"block",objectFit:"contain"}}/>;
 };
-// ─── Tokens ───────────────────────────────────────────────────────────────────
-const C = {bg:"#07070F",card:"#13131F",card2:"#1D1D2C",border:"#2C2C40",accent:"#00C8FF",purple:"#7B2FBE",red:"#FF4D6D",green:"#4ade80",gold:"#FFD700",gray:"#8888B0",white:"#FFFFFF"};
-const inp = {background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.white,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none"};
-const FF = "'Barlow Condensed',sans-serif";
+// ─── Tokens (themeable: oscuro por defecto + claro) ─────────────────────────────
+// Valores en HEX a propósito: la app concatena alpha sobre los colores (ej. C.accent+"22"),
+// y eso sólo funciona con hex de 6 dígitos. C e inp se reasignan en el render de <App/>.
+const C_DARK  = {bg:"#14161C",card:"#1C1F27",card2:"#232730",border:"#313643",borderStrong:"#434A59",accent:"#4C8DFF",purple:"#8B6CF0",red:"#FF6B5C",green:"#36CE83",gold:"#E9A93B",gray:"#8A8FA0",white:"#F3F4F7"};
+const C_LIGHT = {bg:"#FBFAF8",card:"#FFFFFF",card2:"#F4F3F0",border:"#E6E4DF",borderStrong:"#D4D1CA",accent:"#3F73D6",purple:"#7A5BE0",red:"#D9533F",green:"#2FA567",gold:"#B8841C",gray:"#857F76",white:"#26241F"};
+let C = C_DARK;
+const buildInp = (c) => ({background:c.bg,border:`1px solid ${c.border}`,borderRadius:8,padding:"10px 14px",color:c.white,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none"});
+let inp = buildInp(C_DARK);
+const FF = "'Geist', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif";
+const FF_MONO = "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 // ─── UI ───────────────────────────────────────────────────────────────────────
 const Input=({label,...p})=>(<div style={{marginBottom:12}}>{label&&<label style={{display:"block",fontSize:10,color:C.gray,marginBottom:4,letterSpacing:0.8,textTransform:"uppercase"}}>{label}</label>}<input style={inp} {...p}/></div>);
 const Select=({label,options,...p})=>(<div style={{marginBottom:12}}>{label&&<label style={{display:"block",fontSize:10,color:C.gray,marginBottom:4,letterSpacing:0.8,textTransform:"uppercase"}}>{label}</label>}<select style={{...inp,cursor:"pointer"}} {...p}>{options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}</select></div>);
 const Textarea=({label,...p})=>(<div style={{marginBottom:12}}>{label&&<label style={{display:"block",fontSize:10,color:C.gray,marginBottom:4,letterSpacing:0.8,textTransform:"uppercase"}}>{label}</label>}<textarea style={{...inp,minHeight:72,resize:"vertical"}} {...p}/></div>);
 const Btn=({children,onClick,color=C.accent,outline=false,small=false,danger=false,disabled=false,style:sx={}})=>{
   const bg=danger?C.red:color;
-  return <button onClick={onClick} disabled={disabled} style={{background:outline?"transparent":(disabled?C.border:bg),border:`1px solid ${disabled?C.border:bg}`,color:outline?bg:C.white,borderRadius:8,padding:small?"6px 12px":"10px 20px",fontSize:small?12:14,fontWeight:700,cursor:disabled?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:0.3,fontFamily:FF,opacity:disabled?0.5:1,transition:"all 0.15s",...sx}}>{children}</button>;
+  return <button onClick={onClick} disabled={disabled} style={{background:outline?"transparent":(disabled?C.border:bg),border:`1px solid ${disabled?C.border:bg}`,color:outline?bg:"#fff",borderRadius:8,padding:small?"6px 12px":"9px 18px",fontSize:small?12.5:13.5,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:0,fontFamily:FF,opacity:disabled?0.5:1,boxShadow:outline?"none":"inset 0 1px 0 rgba(255,255,255,0.18)",transition:"all 0.15s",...sx}}>{children}</button>;
 };
 const Badge=({text,color=C.accent})=>(<span style={{background:color+"22",color,border:`1px solid ${color}44`,borderRadius:20,padding:"2px 9px",fontSize:10,fontWeight:700,letterSpacing:0.5}}>{text}</span>);
 const Modal=({title,onClose,children,wide=false})=>(
@@ -716,7 +724,7 @@ const Skeleton = ({w="100%",h=14,r=4,style:sx={}}) => (
   <div style={{width:w,height:h,borderRadius:r,background:`linear-gradient(90deg, ${C.border} 0%, ${C.card2} 50%, ${C.border} 100%)`,backgroundSize:"200% 100%",animation:"shimmer 1.4s ease-in-out infinite",...sx}}/>
 );
 // ─── Estilos globales (animaciones reutilizables) ───────────────────────────
-const GLOBAL_CSS = `
+const buildGlobalCSS = (C) => `
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -724,17 +732,20 @@ const GLOBAL_CSS = `
 .anim-fade { animation: fadeIn 0.3s ease-out both; }
 .view-enter { animation: fadeInUp 0.35s ease-out both; }
 * { box-sizing: border-box; }
+::selection { background: ${C.accent}3A; }
+.mono { font-family: ${FF_MONO}; font-variant-numeric: tabular-nums; }
 
 /* ─── Shell responsive (mobile-first) ─────────────────────────────── */
 .app-shell {
   display: flex;
   min-height: 100vh;
   color: ${C.white};
-  font-family: 'Barlow', sans-serif;
-  background:
-    radial-gradient(900px circle at 0% -5%, ${C.purple}1F, transparent 45%),
-    radial-gradient(900px circle at 100% -5%, ${C.accent}16, transparent 45%),
-    ${C.bg};
+  font-family: ${FF};
+  font-feature-settings: "ss01","cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.004em;
+  background: ${C.bg};
 }
 .sidebar { display: none; }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -742,9 +753,9 @@ const GLOBAL_CSS = `
 .topbar {
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; gap: 12px;
-  padding: 11px 16px;
-  background: ${C.card}E6;
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  padding: 10px 16px;
+  background: ${C.card}D9;
+  -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%);
   border-bottom: 1px solid ${C.border};
 }
 .topbar-brand { display: flex; align-items: center; gap: 10px; }
@@ -767,46 +778,49 @@ const GLOBAL_CSS = `
 
 /* ─── Sidebar (desktop) ───────────────────────────────────────────── */
 .side-item {
-  display: flex; align-items: center; gap: 13px; width: 100%;
-  padding: 12px 14px; margin-bottom: 4px;
-  border: none; border-radius: 11px; background: none; cursor: pointer;
-  color: ${C.gray}; font-family: ${FF}; font-weight: 700; font-size: 14.5px;
-  letter-spacing: 0.6px; text-transform: uppercase; text-align: left;
-  transition: background .15s, color .15s, transform .15s;
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 9px 12px; margin-bottom: 2px;
+  border: 1px solid transparent; border-radius: 10px; background: none; cursor: pointer;
+  color: ${C.gray}; font-family: ${FF}; font-weight: 500; font-size: 13.5px;
+  letter-spacing: 0; text-transform: none; text-align: left;
+  transition: background .12s, color .12s, border-color .12s;
 }
+.side-item svg { color: ${C.gray}; flex: 0 0 auto; }
 .side-item:hover { background: ${C.card2}; color: ${C.white}; }
+.side-item:hover svg { color: ${C.white}; }
 .side-item.active {
-  color: ${C.accent};
-  background: linear-gradient(90deg, ${C.accent}22, ${C.accent}08 60%, transparent);
-  box-shadow: inset 3px 0 0 ${C.accent}, 0 0 0 1px ${C.accent}22;
+  color: ${C.white};
+  background: ${C.card};
+  border-color: ${C.border};
+  box-shadow: 0 1px 2px rgba(0,0,0,0.16);
 }
+.side-item.active svg { color: ${C.accent}; }
 
 @media (min-width: 900px) {
   .sidebar {
     display: flex; flex-direction: column; flex-shrink: 0;
-    width: 250px; padding: 22px 14px 18px;
+    width: 248px; padding: 16px 12px 12px;
     position: sticky; top: 0; height: 100vh;
-    background: ${C.card}B3;
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    background: ${C.card};
     border-right: 1px solid ${C.border};
   }
-  .sidebar-nav { margin-top: 22px; flex: 1; }
+  .sidebar-nav { margin-top: 16px; flex: 1; }
   .bottomnav { display: none; }
   .topbar-brand { display: none; }
   .topbar-actions { display: none; }
-  .topbar { padding: 16px 36px; }
+  .topbar { padding: 13px 28px; }
   .topbar-title {
-    display: block; font-family: ${FF}; font-weight: 800;
-    font-size: 22px; letter-spacing: 0.5px; color: ${C.white};
+    display: block; font-family: ${FF}; font-weight: 600;
+    font-size: 20px; letter-spacing: -0.02em; color: ${C.white};
   }
   .content {
-    padding: 30px 36px 48px;
+    padding: 28px 28px 48px;
     max-width: 1480px; margin: 0 auto;
   }
 }
 @media (min-width: 1280px) {
-  .sidebar { width: 268px; }
-  .content { padding: 34px 52px 56px; }
+  .sidebar { width: 264px; }
+  .content { padding: 32px 44px 56px; }
 }
 `;
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3155,6 +3169,11 @@ export default function App() {
   const [googleUser,setGoogleUser]=useState(null); // {id, email, name, avatar, rol}
   const isAdmin = passwordAdmin || googleUser?.rol === "staff";
   const [showLogin,setShowLogin]=useState(false);
+  const [theme,setTheme]=useState(()=>{ try { return localStorage.getItem("culp:theme")||"dark"; } catch { return "dark"; } });
+  // Reasignar paleta + estilo de inputs según el tema, ANTES de renderizar los hijos de App.
+  C = theme==="light" ? C_LIGHT : C_DARK;
+  inp = buildInp(C);
+  useEffect(()=>{ try { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; localStorage.setItem("culp:theme", theme); } catch {} },[theme]);
   useEffect(()=>{
     try { if(localStorage.getItem(ADMIN_AUTH_KEY)==="1") setPasswordAdmin(true); } catch {}
   },[]);
@@ -3298,6 +3317,15 @@ export default function App() {
       <Icon name="shield" size={13}/> INGRESAR
     </button>
   );
+  const themeBtn = (
+    <button
+      onClick={()=>setTheme(t=>t==="light"?"dark":"light")}
+      title={theme==="light"?"Cambiar a modo oscuro":"Cambiar a modo claro"}
+      style={{flexShrink:0,width:38,height:38,borderRadius:9,background:C.card2,border:`1px solid ${C.border}`,color:C.gray,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}
+    >
+      <Icon name={theme==="light"?"moon":"sun"} size={17}/>
+    </button>
+  );
   if(!loaded)return(
     <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:18}}>
       <div style={{animation:"culpPulse 1.5s ease-in-out infinite"}}><CULPLogo size={64}/></div>
@@ -3308,8 +3336,10 @@ export default function App() {
   return(
     <AdminContext.Provider value={isAdmin}>
     <AuthContext.Provider value={googleUser}>
-      <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
-      <style>{GLOBAL_CSS}</style>
+      <link rel="preconnect" href="https://fonts.googleapis.com"/>
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
+      <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+      <style>{buildGlobalCSS(C)}</style>
       <SaveIndicator/>
       <div className="app-shell">
         {/* Sidebar (desktop) */}
@@ -3328,7 +3358,7 @@ export default function App() {
               </button>
             ))}
           </nav>
-          <div style={{paddingTop:14,borderTop:`1px solid ${C.border}`}}>{authBtn}</div>
+          <div style={{paddingTop:14,borderTop:`1px solid ${C.border}`,display:"flex",gap:8,alignItems:"center"}}><div style={{flex:1,minWidth:0}}>{authBtn}</div>{themeBtn}</div>
         </aside>
 
         {/* Main */}
@@ -3340,7 +3370,7 @@ export default function App() {
               <div><div style={{fontSize:14,fontWeight:700,color:C.white,fontFamily:FF,letterSpacing:1,lineHeight:1.1}}>CULP HOCKEY</div><div style={{fontSize:9,color:C.gray,letterSpacing:0.8}}>ANÁLISIS DE RIVALES · PRIMERA DAMAS</div></div>
             </div>
             <div className="topbar-title">{PAGE_LABELS[view]||""}</div>
-            <div className="topbar-actions" style={{maxWidth:180}}>{authBtn}</div>
+            <div className="topbar-actions" style={{maxWidth:240}}>{themeBtn}<div style={{flex:1,minWidth:0}}>{authBtn}</div></div>
           </div>
           {/* Content */}
           <div key={view+(subview||"")} className="view-enter content">
