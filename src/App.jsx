@@ -331,7 +331,7 @@ function videoEmbedInfo(rawUrl) {
   const drvPath = url.match(/drive\.google\.com\/file\/d\/([\w-]{10,})/i);
   const drvQuery = url.match(/[?&]id=([\w-]{10,})/i);
   const drvId = drvPath?.[1] || drvQuery?.[1];
-  if (drvId) return { kind:"drive", embed:`https://drive.google.com/file/d/${drvId}/preview`, watch:`https://drive.google.com/file/d/${drvId}/view` };
+  if (drvId) return { kind:"drive", id:drvId, embed:`https://drive.google.com/file/d/${drvId}/preview`, watch:`https://drive.google.com/file/d/${drvId}/view` };
   // Vimeo opcional: vimeo.com/ID
   const vim = url.match(/vimeo\.com\/(\d{6,})/i);
   if (vim) return { kind:"vimeo", embed:`https://player.vimeo.com/video/${vim[1]}`, watch:`https://vimeo.com/${vim[1]}` };
@@ -2163,6 +2163,32 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
     </div>
   );
 }
+// ─── Drive Video Player: usa <video> en iOS, iframe en el resto ──────────────
+function DriveVideoPlayer({ info, title }) {
+  const [useFallback, setUseFallback] = React.useState(false);
+  const directUrl = `https://drive.google.com/uc?export=view&id=${info.id}`;
+  if (useFallback) {
+    return (
+      <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",
+                   WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}>
+        <iframe src={info.embed} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen frameBorder="0"
+          style={{display:"block",width:"100%",aspectRatio:"16/9",border:0}}/>
+      </div>
+    );
+  }
+  return (
+    <video
+      src={directUrl}
+      controls
+      playsInline
+      preload="metadata"
+      style={{display:"block",width:"100%",borderRadius:8,background:"#000",aspectRatio:"16/9",maxHeight:"60vh"}}
+      onError={() => setUseFallback(true)}
+    />
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // VIDEOS SECTION (dentro de RivalDetail)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2213,18 +2239,21 @@ function VideosSection({videos, rivalId}) {
               <span style={{fontSize:14}}>⛶</span> pantalla completa
             </a>
           </div>
-          <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",
-                       WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}>
-            <iframe
-              src={playing.info?.embed||playing.video.url}
-              title={playing.video.title}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-              frameBorder="0"
-              style={{display:"block",width:"100%",aspectRatio:"16/9",border:0,
-                      WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}
-            />
-          </div>
+          {playing.info?.kind === "drive" ? (
+            <DriveVideoPlayer info={playing.info} title={playing.video.title}/>
+          ) : (
+            <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",
+                         WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}>
+              <iframe
+                src={playing.info?.embed||playing.video.url}
+                title={playing.video.title}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                frameBorder="0"
+                style={{display:"block",width:"100%",aspectRatio:"16/9",border:0}}
+              />
+            </div>
+          )}
         </Modal>
       )}
     </SCard>
