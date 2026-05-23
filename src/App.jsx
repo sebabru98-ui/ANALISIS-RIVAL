@@ -2208,10 +2208,22 @@ function VideosSection({videos, rivalId}) {
         <Modal title={playing.video.title} onClose={()=>setPlaying(null)} wide>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
             <Badge text={playing.video.category} color={C.purple}/>
-            <a href={playing.info?.watch||playing.video.url} target="_blank" rel="noreferrer" style={{marginLeft:"auto",color:C.gray,fontSize:11,textDecoration:"none"}}>abrir en nueva pestaña ↗</a>
+            <a href={playing.info?.watch||playing.video.url} target="_blank" rel="noreferrer"
+               style={{marginLeft:"auto",color:C.gray,fontSize:11,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>
+              <span style={{fontSize:14}}>⛶</span> pantalla completa
+            </a>
           </div>
-          <div style={{position:"relative",width:"100%",paddingTop:"56.25%",background:"#000",borderRadius:8,overflow:"hidden"}}>
-            <iframe src={playing.info?.embed||playing.video.url} title={playing.video.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen frameBorder="0" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:0}}/>
+          <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",
+                       WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}>
+            <iframe
+              src={playing.info?.embed||playing.video.url}
+              title={playing.video.title}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+              frameBorder="0"
+              style={{display:"block",width:"100%",aspectRatio:"16/9",border:0,
+                      WebkitTransform:"translate3d(0,0,0)",transform:"translate3d(0,0,0)"}}
+            />
           </div>
         </Modal>
       )}
