@@ -3295,7 +3295,7 @@ export default function App() {
         await save(FIXTURE_MIGRATION_KEY, true);
       }
       setFixture(workingFx);
-      if(workingStandings) setStandings(workingStandings);
+      if(workingStandings) setStandings([...workingStandings].sort((a,b)=>(b.pts-a.pts)||(b.pg-a.pg)||(b.dif-a.dif)||(b.gf-a.gf)));
       // Si no hay goleadoras guardadas O nunca se sembró, cargar datos iniciales
       if(!seeded || !sc || sc.length===0) {
         setScorers(INITIAL_SCORERS);
