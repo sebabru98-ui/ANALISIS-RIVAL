@@ -256,7 +256,7 @@ function computeStandingsFromFixture(fixture) {
     }
   }
   return Object.values(teams).map(t => ({...t, pts: t.pg*3+t.pe, dif: t.gf-t.gc}))
-    .sort((a,b) => (b.pts-a.pts) || (b.dif-a.dif) || (b.gf-a.gf));
+    .sort((a,b) => (b.pts-a.pts) || (b.pg-a.pg) || (b.dif-a.dif) || (b.gf-a.gf));
 }
 // ─── Helpers para vistas (últimos 5, próximo partido, evolución) ──────────
 function getLastNResults(fixture, teamName, n=5) {
@@ -1037,7 +1037,7 @@ function StandingsView({standings,setStandings,fixture}) {
     const pts=+form.pg*3+(+form.pe),dif=+form.gf-+form.gc;
     const entry={...form,pts,dif,pj:+form.pj,pg:+form.pg,pe:+form.pe,pp:+form.pp,gf:+form.gf,gc:+form.gc};
     const s=editIdx!==null?standings.map((x,i)=>i===editIdx?entry:x):[...standings,entry];
-    const sorted=[...s].sort((a,b)=>(b.pts-a.pts)||(b.dif-a.dif));
+    const sorted=[...s].sort((a,b)=>(b.pts-a.pts)||(b.pg-a.pg)||(b.dif-a.dif)||(b.gf-a.gf));
     setStandings(sorted);save(KEYS.standings,sorted);setEditing(false);
   };
   const renderLast5 = teamName => {
