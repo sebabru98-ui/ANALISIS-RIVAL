@@ -2027,14 +2027,14 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers,rivals}) {
         {tab==="corners"&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div>
-              <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>PC OFENSIVOS (RIVAL)</p>
+              <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>CC OFENSIVOS (RIVAL)</p>
               <AutoTextarea label="Variantes de PC" value={analysis.pcOffVariants} onChange={upd("pcOffVariants")} field="pcOffVariants" rivals={rivals}/>
               <AutoInput label="Ejecutora" value={analysis.pcOffExecutor} onChange={upd("pcOffExecutor")} field="pcOffExecutor" rivals={rivals}/>
               <AutoInput label="Rematadora" value={analysis.pcOffShooter} onChange={upd("pcOffShooter")} field="pcOffShooter" rivals={rivals}/>
               <AutoInput label="Jugadora 2do palo" value={analysis.pcOffSecond} onChange={upd("pcOffSecond")} field="pcOffSecond" rivals={rivals}/>
             </div>
             <div style={{borderLeft:`1px solid ${C.border}`,paddingLeft:16}}>
-              <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>NUESTRA DEFENSA DE PC</p>
+              <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>CC DEFENSIVOS (RIVAL)</p>
               <AutoInput label="Formación defensiva" value={analysis.pcDefSystem} onChange={upd("pcDefSystem")} field="pcDefSystem" rivals={rivals}/>
               <AutoInput label="Primera salida" value={analysis.pcDefExit} onChange={upd("pcDefExit")} field="pcDefExit" rivals={rivals}/>
               <AutoInput label="Runner principal" value={analysis.pcDefRunner} onChange={upd("pcDefRunner")} field="pcDefRunner" rivals={rivals}/>
