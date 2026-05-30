@@ -1869,7 +1869,43 @@ function CardsView({cards, setCards}) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIVAL FORM
 // ═══════════════════════════════════════════════════════════════════════════════
-function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
+function getSuggestions(rivals, field) {
+  const seen = new Set();
+  (rivals||[]).forEach(r => {
+    const v = r.analysis?.[field];
+    if(v && typeof v === "string") v.split("\n").forEach(line => { const t=line.trim(); if(t) seen.add(t); });
+  });
+  return [...seen];
+}
+function AutoInput({label, value, onChange, field, rivals, ...rest}) {
+  const id = "dl-"+field;
+  const suggestions = getSuggestions(rivals, field);
+  return (
+    <div style={{marginBottom:12}}>
+      {label&&<label style={{display:"block",fontSize:10,color:C.gray,marginBottom:4,letterSpacing:0.8,textTransform:"uppercase"}}>{label}</label>}
+      <input style={inp} value={value} onChange={onChange} list={suggestions.length?id:undefined} {...rest}/>
+      {suggestions.length>0&&<datalist id={id}>{suggestions.map((s,i)=><option key={i} value={s}/>)}</datalist>}
+    </div>
+  );
+}
+function AutoTextarea({label, value, onChange, field, rivals, ...rest}) {
+  const suggestions = getSuggestions(rivals, field).filter(s => !value?.includes(s));
+  const append = s => { const sep = value?.trim() ? "\n" : ""; onChange({target:{value:(value||"")+sep+s}}); };
+  return (
+    <div style={{marginBottom:12}}>
+      {label&&<label style={{display:"block",fontSize:10,color:C.gray,marginBottom:4,letterSpacing:0.8,textTransform:"uppercase"}}>{label}</label>}
+      <textarea style={{...inp,minHeight:72,resize:"vertical"}} value={value} onChange={onChange} {...rest}/>
+      {suggestions.length>0&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+          {suggestions.map((s,i)=>(
+            <button key={i} onClick={()=>append(s)} style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px",fontSize:11,color:C.gray,cursor:"pointer",fontFamily:FF,maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={s}>+ {s}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function RivalForm({rival,onSave,onCancel,onUpdateScorers,rivals}) {
   const emptyA={city:"",colors:"",coach:"",assistant:"",physio:"",goalkeeperCoach:"",goalkeeper:"",captain:"",keyPlayers:"",injuries:"",formation:"",offensiveStructure:"",attackDisposition:"",attackNotes:"",exitType:"",exitKeyPlayer:"",exitSide:"",pressureApplied:"",arrivalZones:"",shooters:"",goalPlays:"",goalsLastMatch:"",pcOffVariants:"",pcOffExecutor:"",pcOffShooter:"",pcOffSecond:"",pressType:"",pressZone:"",pressIntensity:"",pressTriggers:"",blockType:"",defensiveLine:"",zoneStructure:"",vulnerableIn:"",marksSystem:"",whoMarksUs:"",dangerZones:"",transition:"",pcDefSystem:"",pcDefExit:"",pcDefRunner:"",pcDefGK:"",strengths:"",weaknesses:"",planBall:"",planNoBall:"",planPCOff:"",planPCDef:""};
   const [name,setName]=useState(rival?.name||"");
   const [date,setDate]=useState(rival?.date||"");
@@ -1920,17 +1956,17 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div>
               <p style={{color:C.accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>DATOS DEL CLUB</p>
-              <Input label="Ciudad" value={analysis.city} onChange={upd("city")}/>
-              <Input label="Colores" value={analysis.colors} onChange={upd("colors")}/>
-              <Input label="DT Principal" value={analysis.coach} onChange={upd("coach")}/>
-              <Input label="Asistente" value={analysis.assistant} onChange={upd("assistant")}/>
-              <Input label="Prep. Física" value={analysis.physio} onChange={upd("physio")}/>
+              <AutoInput label="Ciudad" value={analysis.city} onChange={upd("city")} field="city" rivals={rivals}/>
+              <AutoInput label="Colores" value={analysis.colors} onChange={upd("colors")} field="colors" rivals={rivals}/>
+              <AutoInput label="DT Principal" value={analysis.coach} onChange={upd("coach")} field="coach" rivals={rivals}/>
+              <AutoInput label="Asistente" value={analysis.assistant} onChange={upd("assistant")} field="assistant" rivals={rivals}/>
+              <AutoInput label="Prep. Física" value={analysis.physio} onChange={upd("physio")} field="physio" rivals={rivals}/>
             </div>
             <div style={{borderLeft:`1px solid ${C.border}`,paddingLeft:16}}>
               <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>PLANTEL</p>
               <Input label="Arquera titular" value={analysis.goalkeeper} onChange={upd("goalkeeper")}/>
               <Input label="Capitana" value={analysis.captain} onChange={upd("captain")}/>
-              <Textarea label="Jugadoras clave" value={analysis.keyPlayers} onChange={upd("keyPlayers")}/>
+              <AutoTextarea label="Jugadoras clave" value={analysis.keyPlayers} onChange={upd("keyPlayers")} field="keyPlayers" rivals={rivals}/>
               <Input label="Bajas / Lesionadas" value={analysis.injuries} onChange={upd("injuries")}/>
             </div>
           </div>
@@ -1940,14 +1976,14 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
               <div>
                 <p style={{color:C.accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>SISTEMA / FORMACIÓN</p>
-                <Input label="Formación base" value={analysis.formation} onChange={upd("formation")} placeholder="Ej: 4-3-3"/>
-                <Input label="Estructura ofensiva" value={analysis.offensiveStructure} onChange={upd("offensiveStructure")}/>
-                <Textarea label="Notas generales" value={analysis.attackNotes} onChange={upd("attackNotes")}/>
+                <AutoInput label="Formación base" value={analysis.formation} onChange={upd("formation")} field="formation" rivals={rivals} placeholder="Ej: 4-3-3"/>
+                <AutoInput label="Estructura ofensiva" value={analysis.offensiveStructure} onChange={upd("offensiveStructure")} field="offensiveStructure" rivals={rivals}/>
+                <AutoTextarea label="Notas generales" value={analysis.attackNotes} onChange={upd("attackNotes")} field="attackNotes" rivals={rivals}/>
               </div>
               <div style={{borderLeft:`1px solid ${C.border}`,paddingLeft:16}}>
                 <p style={{color:C.accent,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>SALIDA DESDE EL FONDO</p>
-                <Input label="Tipo de salida" value={analysis.exitType} onChange={upd("exitType")}/>
-                <Input label="Jugadora clave" value={analysis.exitKeyPlayer} onChange={upd("exitKeyPlayer")}/>
+                <AutoInput label="Tipo de salida" value={analysis.exitType} onChange={upd("exitType")} field="exitType" rivals={rivals}/>
+                <AutoInput label="Jugadora clave" value={analysis.exitKeyPlayer} onChange={upd("exitKeyPlayer")} field="exitKeyPlayer" rivals={rivals}/>
                 <Select label="Lado predominante" value={analysis.exitSide} onChange={upd("exitSide")} options={["","Derecho","Izquierdo","Central","Variable"]}/>
                 <Input label="Presión aplicada" value={analysis.pressureApplied} onChange={upd("pressureApplied")}/>
               </div>
@@ -1955,8 +1991,8 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
             <div style={{borderTop:`1px solid ${C.border}`,marginTop:12,paddingTop:12}}>
               <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>LLEGADAS Y REMATES</p>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                <div><Input label="Zonas de llegada" value={analysis.arrivalZones} onChange={upd("arrivalZones")}/><Input label="Rematadoras" value={analysis.shooters} onChange={upd("shooters")}/></div>
-                <div><Textarea label="Jugadas de gol frecuentes" value={analysis.goalPlays} onChange={upd("goalPlays")}/><Input label="Goles último partido" type="number" value={analysis.goalsLastMatch} onChange={upd("goalsLastMatch")}/></div>
+                <div><AutoInput label="Zonas de llegada" value={analysis.arrivalZones} onChange={upd("arrivalZones")} field="arrivalZones" rivals={rivals}/><AutoInput label="Rematadoras" value={analysis.shooters} onChange={upd("shooters")} field="shooters" rivals={rivals}/></div>
+                <div><AutoTextarea label="Jugadas de gol frecuentes" value={analysis.goalPlays} onChange={upd("goalPlays")} field="goalPlays" rivals={rivals}/><Input label="Goles último partido" type="number" value={analysis.goalsLastMatch} onChange={upd("goalsLastMatch")}/></div>
               </div>
             </div>
           </div>
@@ -1966,24 +2002,24 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
               <div>
                 <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>PRESSING</p>
-                <Input label="Tipo de presión" value={analysis.pressType} onChange={upd("pressType")}/>
+                <AutoInput label="Tipo de presión" value={analysis.pressType} onChange={upd("pressType")} field="pressType" rivals={rivals}/>
                 <Select label="Intensidad" value={analysis.pressIntensity} onChange={upd("pressIntensity")} options={["","Alta","Media","Baja","Variable"]}/>
-                <Input label="Zona de inicio" value={analysis.pressZone} onChange={upd("pressZone")}/>
-                <Input label="Triggers" value={analysis.pressTriggers} onChange={upd("pressTriggers")}/>
+                <AutoInput label="Zona de inicio" value={analysis.pressZone} onChange={upd("pressZone")} field="pressZone" rivals={rivals}/>
+                <AutoInput label="Triggers" value={analysis.pressTriggers} onChange={upd("pressTriggers")} field="pressTriggers" rivals={rivals}/>
               </div>
               <div style={{borderLeft:`1px solid ${C.border}`,paddingLeft:16}}>
                 <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>BLOQUE DEFENSIVO</p>
                 <Select label="Tipo de bloque" value={analysis.blockType} onChange={upd("blockType")} options={["","Bloque alto","Bloque medio","Bloque bajo"]}/>
-                <Input label="Línea defensiva" value={analysis.defensiveLine} onChange={upd("defensiveLine")}/>
-                <Input label="Vulnerable en" value={analysis.vulnerableIn} onChange={upd("vulnerableIn")}/>
+                <AutoInput label="Línea defensiva" value={analysis.defensiveLine} onChange={upd("defensiveLine")} field="defensiveLine" rivals={rivals}/>
+                <AutoInput label="Vulnerable en" value={analysis.vulnerableIn} onChange={upd("vulnerableIn")} field="vulnerableIn" rivals={rivals}/>
                 <Select label="Sistema de marcas" value={analysis.marksSystem} onChange={upd("marksSystem")} options={["","Individual","Zonal","Mixto"]}/>
               </div>
             </div>
             <div style={{borderTop:`1px solid ${C.border}`,marginTop:12,paddingTop:12}}>
               <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>MARCAS Y TRANSICIONES</p>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                <div><Input label="Quién nos marca" value={analysis.whoMarksUs} onChange={upd("whoMarksUs")}/><Input label="Zonas de peligro" value={analysis.dangerZones} onChange={upd("dangerZones")}/></div>
-                <div><Textarea label="Transición def→ataque" value={analysis.transition} onChange={upd("transition")}/></div>
+                <div><AutoInput label="Quién nos marca" value={analysis.whoMarksUs} onChange={upd("whoMarksUs")} field="whoMarksUs" rivals={rivals}/><AutoInput label="Zonas de peligro" value={analysis.dangerZones} onChange={upd("dangerZones")} field="dangerZones" rivals={rivals}/></div>
+                <div><AutoTextarea label="Transición def→ataque" value={analysis.transition} onChange={upd("transition")} field="transition" rivals={rivals}/></div>
               </div>
             </div>
           </div>
@@ -1992,17 +2028,17 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div>
               <p style={{color:C.red,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>PC OFENSIVOS (RIVAL)</p>
-              <Textarea label="Variantes de PC" value={analysis.pcOffVariants} onChange={upd("pcOffVariants")}/>
-              <Input label="Ejecutora" value={analysis.pcOffExecutor} onChange={upd("pcOffExecutor")}/>
-              <Input label="Rematadora" value={analysis.pcOffShooter} onChange={upd("pcOffShooter")}/>
-              <Input label="Jugadora 2do palo" value={analysis.pcOffSecond} onChange={upd("pcOffSecond")}/>
+              <AutoTextarea label="Variantes de PC" value={analysis.pcOffVariants} onChange={upd("pcOffVariants")} field="pcOffVariants" rivals={rivals}/>
+              <AutoInput label="Ejecutora" value={analysis.pcOffExecutor} onChange={upd("pcOffExecutor")} field="pcOffExecutor" rivals={rivals}/>
+              <AutoInput label="Rematadora" value={analysis.pcOffShooter} onChange={upd("pcOffShooter")} field="pcOffShooter" rivals={rivals}/>
+              <AutoInput label="Jugadora 2do palo" value={analysis.pcOffSecond} onChange={upd("pcOffSecond")} field="pcOffSecond" rivals={rivals}/>
             </div>
             <div style={{borderLeft:`1px solid ${C.border}`,paddingLeft:16}}>
               <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>NUESTRA DEFENSA DE PC</p>
-              <Input label="Formación defensiva" value={analysis.pcDefSystem} onChange={upd("pcDefSystem")}/>
-              <Input label="Primera salida" value={analysis.pcDefExit} onChange={upd("pcDefExit")}/>
-              <Input label="Runner principal" value={analysis.pcDefRunner} onChange={upd("pcDefRunner")}/>
-              <Input label="Posición arquera" value={analysis.pcDefGK} onChange={upd("pcDefGK")}/>
+              <AutoInput label="Formación defensiva" value={analysis.pcDefSystem} onChange={upd("pcDefSystem")} field="pcDefSystem" rivals={rivals}/>
+              <AutoInput label="Primera salida" value={analysis.pcDefExit} onChange={upd("pcDefExit")} field="pcDefExit" rivals={rivals}/>
+              <AutoInput label="Runner principal" value={analysis.pcDefRunner} onChange={upd("pcDefRunner")} field="pcDefRunner" rivals={rivals}/>
+              <AutoInput label="Posición arquera" value={analysis.pcDefGK} onChange={upd("pcDefGK")} field="pcDefGK" rivals={rivals}/>
             </div>
           </div>
         )}
@@ -2138,16 +2174,16 @@ function RivalForm({rival,onSave,onCancel,onUpdateScorers}) {
         {tab==="conclusion"&&(
           <div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-              <Textarea label="💪 Fortalezas del rival" value={analysis.strengths} onChange={upd("strengths")}/>
-              <Textarea label="⚠️ Para explotar" value={analysis.weaknesses} onChange={upd("weaknesses")}/>
+              <AutoTextarea label="💪 Fortalezas del rival" value={analysis.strengths} onChange={upd("strengths")} field="strengths" rivals={rivals}/>
+              <AutoTextarea label="⚠️ Para explotar" value={analysis.weaknesses} onChange={upd("weaknesses")} field="weaknesses" rivals={rivals}/>
             </div>
             <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,marginTop:4}}>
               <p style={{color:C.purple,fontSize:10,letterSpacing:1,fontWeight:700,margin:"0 0 10px"}}>PLAN DE PARTIDO</p>
-              <Textarea label="Con pelota" value={analysis.planBall} onChange={upd("planBall")}/>
-              <Textarea label="Sin pelota" value={analysis.planNoBall} onChange={upd("planNoBall")}/>
+              <AutoTextarea label="Con pelota" value={analysis.planBall} onChange={upd("planBall")} field="planBall" rivals={rivals}/>
+              <AutoTextarea label="Sin pelota" value={analysis.planNoBall} onChange={upd("planNoBall")} field="planNoBall" rivals={rivals}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                <Textarea label="PC ofensivos" value={analysis.planPCOff} onChange={upd("planPCOff")}/>
-                <Textarea label="PC defensivos" value={analysis.planPCDef} onChange={upd("planPCDef")}/>
+                <AutoTextarea label="PC ofensivos" value={analysis.planPCOff} onChange={upd("planPCOff")} field="planPCOff" rivals={rivals}/>
+                <AutoTextarea label="PC defensivos" value={analysis.planPCDef} onChange={upd("planPCDef")} field="planPCDef" rivals={rivals}/>
               </div>
             </div>
           </div>
@@ -3418,8 +3454,8 @@ export default function App() {
           <div key={view+(subview||"")} className="view-enter content">
             {view==="home"&&<Dashboard rivals={rivals} standings={standings} scorers={scorers} fixture={fixture} cards={cards} setView={setView}/>}
             {view==="rivals"&&!subview&&<RivalsView rivals={rivals} onNew={()=>{setSelected(null);setSubview("new");}} onView={r=>{setSelected(r);setSubview("detail");}} onEdit={r=>{setSelected(r);setSubview("edit");}} onDelete={deleteRival}/>}
-            {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla}/>}
-            {view==="rivals"&&subview==="edit"&&<RivalForm rival={selected} onSave={saveRival} onCancel={()=>{setSubview(null);setSelected(null);}} onUpdateScorers={updateScorersFromPlanilla}/>}
+            {view==="rivals"&&subview==="new"&&<RivalForm rival={null} onSave={saveRival} onCancel={()=>setSubview(null)} onUpdateScorers={updateScorersFromPlanilla} rivals={rivals}/>}
+            {view==="rivals"&&subview==="edit"&&<RivalForm rival={selected} onSave={saveRival} onCancel={()=>{setSubview(null);setSelected(null);}} onUpdateScorers={updateScorersFromPlanilla} rivals={rivals}/>}
             {view==="rivals"&&subview==="detail"&&<RivalDetail rival={selected} onEdit={()=>setSubview("edit")} onBack={()=>{setSubview(null);setSelected(null);}}/>}
             {view==="standings"&&<StandingsView standings={standings} setStandings={setStandings} fixture={fixture}/>}
             {view==="scorers"&&<ScorersView scorers={scorers} setScorers={setScorers} rivals={rivals}/>}
