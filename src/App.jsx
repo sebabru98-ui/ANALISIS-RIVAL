@@ -2722,7 +2722,7 @@ function RivalDetail({rival,onEdit,onBack}) {
       {has("pcOffVariants","pcOffExecutor","pcOffShooter","pcOffSecond","pcDefSystem","pcDefExit","pcDefRunner","pcDefGK")&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
           {has("pcOffVariants","pcOffExecutor","pcOffShooter","pcOffSecond")&&(
-            <SCard title="PC Ofensivos (rival)" icon="corner" color={C.red}>
+            <SCard title="CC Ofensivos (rival)" icon="corner" color={C.red}>
               <Row l="Variantes" v={a.pcOffVariants}/>
               <Row l="Ejecutora" v={a.pcOffExecutor}/>
               <Row l="Rematadora" v={a.pcOffShooter}/>
@@ -2730,7 +2730,7 @@ function RivalDetail({rival,onEdit,onBack}) {
             </SCard>
           )}
           {has("pcDefSystem","pcDefExit","pcDefRunner","pcDefGK")&&(
-            <SCard title="Nuestra defensa de PC" icon="corner" color={C.purple}>
+            <SCard title="CC Defensivos (rival)" icon="corner" color={C.purple}>
               <Row l="Formación defensiva" v={a.pcDefSystem}/>
               <Row l="Primera salida" v={a.pcDefExit}/>
               <Row l="Runner principal" v={a.pcDefRunner}/>
